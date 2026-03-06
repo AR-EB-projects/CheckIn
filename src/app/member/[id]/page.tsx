@@ -146,13 +146,14 @@ export default function MemberPage({ params }: { params: Promise<{ id: string }>
 
   return (
     <div className="container flex items-center justify-center fade-in" style={{ minHeight: '100vh' }}>
-      <div className="member-card" style={{ maxWidth: '420px', width: '100%' }}>
-        <div className="text-center mb-6">
-          <div className="text-gold mb-3" style={{ fontSize: '2.5rem' }}>♦</div>
-          <h1 className="member-name">{member.name}</h1>
+      <div className="member-card" style={{ maxWidth: '450px', width: '100%' }}>
+        <div className="text-center mb-8">
+          <div className="text-gold mb-4" style={{ fontSize: '3rem' }}>♦</div>
+          <h1 className="member-name mb-2">{member.name}</h1>
+          <p className="text-secondary" style={{ fontSize: '1rem' }}>ID: {member.id}</p>
         </div>
 
-        <div className="visit-info mb-6">
+        <div className="visit-info mb-8">
           <div className="visit-item">
             <span className="visit-number">{member.visits_total}</span>
             <div className="visit-label">Карта</div>
@@ -170,9 +171,9 @@ export default function MemberPage({ params }: { params: Promise<{ id: string }>
         </div>
 
         {isExhausted && (
-          <div className="alert alert-warning mb-6">
-            <strong>Картата е изчерпана</strong>
-            <p className="mt-2 mb-0">Няма оставащи посещения. Моля, свържете се с администратор.</p>
+          <div className="alert alert-warning mb-6 text-center">
+            <strong className="block mb-2">Картата е изчерпана</strong>
+            <p className="mb-0">Няма оставащи посещения. Моля, свържете се с администратор.</p>
           </div>
         )}
 
@@ -183,7 +184,12 @@ export default function MemberPage({ params }: { params: Promise<{ id: string }>
               onClick={handleCheckIn}
               disabled={isExhausted}
               className="btn btn-primary w-full"
-              style={{ cursor: isExhausted ? 'not-allowed' : 'pointer' }}
+              style={{ 
+                cursor: isExhausted ? 'not-allowed' : 'pointer',
+                padding: '14px 20px',
+                fontSize: '16px',
+                fontWeight: '600'
+              }}
             >
               Check In
             </button>
@@ -195,8 +201,10 @@ export default function MemberPage({ params }: { params: Promise<{ id: string }>
                 border: '1px solid var(--gold)',
                 color: 'var(--gold)',
                 background: 'transparent',
-                padding: '0.75rem',
-                borderRadius: 'var(--radius)'
+                padding: '14px 20px',
+                borderRadius: 'var(--radius)',
+                fontSize: '16px',
+                fontWeight: '600'
               }}
             >
               Reset
@@ -204,38 +212,11 @@ export default function MemberPage({ params }: { params: Promise<{ id: string }>
           </div>
         )}
 
-        {/* Debug информация */}
-        <div style={{ 
-          position: 'fixed', 
-          top: '10px', 
-          right: '10px', 
-          background: 'rgba(0,0,0,0.8)', 
-          color: 'white', 
-          padding: '10px', 
-          borderRadius: '5px',
-          fontSize: '12px'
-        }}>
-          isAdmin: {isAdmin.toString()}<br/>
-          member.visits_used: {member?.visits_used || 0}<br/>
-          remaining: {remaining}
-        </div>
-
-        {/* Бутон за изход от администраторски режим */}
-        {isAdmin && (
-          <button
-            onClick={handleAdminLogout}
-            className="btn btn-secondary w-full mb-6"
-            style={{ cursor: 'pointer' }}
-          >
-            Изход от администраторски режим
-          </button>
-        )}
-
-        <div className="mt-6 text-center">
-          <p className="text-muted" style={{ fontSize: '0.85rem' }}>
+        <div className="mt-8 text-center">
+          <p className="text-muted" style={{ fontSize: '0.9rem' }}>
             Dalida Dance Studio
           </p>
-          <p className="text-muted" style={{ fontSize: '0.75rem' }}>
+          <p className="text-muted" style={{ fontSize: '0.8rem' }}>
             NFC Check-in System
           </p>
         </div>
