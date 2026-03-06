@@ -7,7 +7,7 @@ import Link from "next/link";
 export default function AddMemberPage() {
   const [firstName, setFirstName] = useState("");
   const [secondName, setSecondName] = useState("");
-  const [visitsTotal, setVisitsTotal] = useState(10);
+  const [visitsTotal, setVisitsTotal] = useState(8);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
