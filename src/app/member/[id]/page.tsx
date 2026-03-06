@@ -17,38 +17,43 @@ export default function MemberPage({ params }: { params: Promise<{ id: string }>
   const [isAdmin, setIsAdmin] = useState<boolean>(false)
 
   useEffect(() => {
-    // Mock data - в реалност тук ще има API call
-    const mockMember: Member = {
-      id: parseInt(resolvedParams.id),
-      name: 'Anna Petrova',
-      visits_total: 8,
-      visits_used: 4
-    }
+    const fetchData = async () => {
+      try {
+        // Check admin session via API
+        const sessionRes = await fetch('/api/admin/check-session');
+        const sessionData = await sessionRes.json();
+        setIsAdmin(sessionData.isAdmin);
 
-    // Проста проверка - ако има ?admin=1 в URL, значи е администратор
-    // В реалност тук ще има JWT token/cookie проверка
-    let adminCheck = false
-    
-    // Проверка за localStorage (работи само в production)
-    try {
-      adminCheck = localStorage.getItem('isAdmin') === 'true'
-    } catch (e) {
-      console.log('localStorage не работи:', e)
-    }
-    
-    // Проверка за URL параметър (fallback за development)
-    if (!adminCheck && typeof window !== 'undefined') {
-      const urlParams = new URLSearchParams(window.location.search)
-      adminCheck = urlParams.get('admin') === '1'
-    }
-    
-    setIsAdmin(adminCheck)
-    console.log('Admin check:', adminCheck, 'from localStorage:', localStorage.getItem('isAdmin'), 'from URL:', window.location.search)
+        // Fetch member data
+        const memberRes = await fetch(`/api/members/${resolvedParams.id}`);
+        if (memberRes.ok) {
+          const data = await memberRes.json();
+          setMember(data);
+        } else {
+          // Fallback to mock if API not ready or fails
+          const mockMember: Member = {
+            id: parseInt(resolvedParams.id),
+            name: 'Anna Petrova',
+            visits_total: 8,
+            visits_used: 4
+          }
+          setMember(mockMember);
+        }
+      } catch (err) {
+        console.error('Error fetching data:', err);
+        // Fallback to mock
+        setMember({
+          id: parseInt(resolvedParams.id),
+          name: 'Anna Petrova',
+          visits_total: 8,
+          visits_used: 4
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    setTimeout(() => {
-      setMember(mockMember)
-      setLoading(false)
-    }, 500)
+    fetchData();
   }, [resolvedParams.id])
 
   const remaining = member ? member.visits_total - member.visits_used : 0
