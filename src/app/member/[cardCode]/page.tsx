@@ -3,13 +3,15 @@
 import { useState, useEffect, use } from 'react'
 
 interface Member {
-  id: number
+  id: string
+  cardCode: string
   name: string
   visits_total: number
   visits_used: number
+  isActive?: boolean
 }
 
-export default function MemberPage({ params }: { params: Promise<{ id: string }> }) {
+export default function MemberPage({ params }: { params: Promise<{ cardCode: string }> }) {
   const resolvedParams = use(params)
   const [member, setMember] = useState<Member | null>(null)
   const [loading, setLoading] = useState(true)
@@ -25,17 +27,19 @@ export default function MemberPage({ params }: { params: Promise<{ id: string }>
         setIsAdmin(sessionData.isAdmin);
 
         // Fetch member data
-        const memberRes = await fetch(`/api/members/${resolvedParams.id}`);
+        const memberRes = await fetch(`/api/members/${resolvedParams.cardCode}`);
         if (memberRes.ok) {
           const data = await memberRes.json();
           setMember(data);
         } else {
           // Fallback to mock if API not ready or fails
           const mockMember: Member = {
-            id: parseInt(resolvedParams.id),
+            id: 'mock-id',
+            cardCode: resolvedParams.cardCode,
             name: 'Anna Petrova',
             visits_total: 8,
-            visits_used: 4
+            visits_used: 4,
+            isActive: true
           }
           setMember(mockMember);
         }
@@ -43,10 +47,12 @@ export default function MemberPage({ params }: { params: Promise<{ id: string }>
         console.error('Error fetching data:', err);
         // Fallback to mock
         setMember({
-          id: parseInt(resolvedParams.id),
+          id: 'mock-id',
+          cardCode: resolvedParams.cardCode,
           name: 'Anna Petrova',
           visits_total: 8,
-          visits_used: 4
+          visits_used: 4,
+          isActive: true
         });
       } finally {
         setLoading(false);
@@ -54,7 +60,7 @@ export default function MemberPage({ params }: { params: Promise<{ id: string }>
     };
 
     fetchData();
-  }, [resolvedParams.id])
+  }, [resolvedParams.cardCode])
 
   const remaining = member ? member.visits_total - member.visits_used : 0
   const isExhausted = remaining <= 0
@@ -63,7 +69,7 @@ export default function MemberPage({ params }: { params: Promise<{ id: string }>
     if (!member || isExhausted) return
     
     try {
-      const response = await fetch(`/api/members/${resolvedParams.id}/check-in`, {
+      const response = await fetch(`/api/members/${resolvedParams.cardCode}/check-in`, {
         method: 'POST',
       });
 
@@ -84,7 +90,7 @@ export default function MemberPage({ params }: { params: Promise<{ id: string }>
     if (!member) return
     
     try {
-      const response = await fetch(`/api/members/${resolvedParams.id}/reset`, {
+      const response = await fetch(`/api/members/${resolvedParams.cardCode}/reset`, {
         method: 'POST',
       });
 
@@ -138,7 +144,7 @@ export default function MemberPage({ params }: { params: Promise<{ id: string }>
       <div className="container flex items-center justify-center" style={{ minHeight: '100vh' }}>
         <div className="alert alert-warning">
           <h3 className="mb-2">Член не е намерен</h3>
-          <p>Не съществува член с ID: {resolvedParams.id}</p>
+          <p>Не съществува член с код на карта: {resolvedParams.cardCode}</p>
         </div>
       </div>
     )
@@ -150,6 +156,9 @@ export default function MemberPage({ params }: { params: Promise<{ id: string }>
         <div className="text-center mb-6">
           <div className="text-gold mb-3" style={{ fontSize: '2.5rem' }}>♦</div>
           <h1 className="member-name">{member.name}</h1>
+          {member.isActive === false && (
+            <div className="badge badge-warning mb-2">Активиране на карта...</div>
+          )}
         </div>
 
         <div className="visit-info mb-6">
