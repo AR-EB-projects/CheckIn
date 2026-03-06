@@ -2,16 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { verifyAdminToken } from "@/lib/adminAuth";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ cardCode: string }> }
+    request: NextRequest,
+    { params }: { params: Promise<{ cardCode: string }> }
 ) {
   const { cardCode } = await params;
 
-  // Verify admin session
-  const cookieHeader = request.headers.get("cookie");
-  const cookies = cookieHeader ? Object.fromEntries(cookieHeader.split("; ").map(c => c.split("="))) : {};
-  const token = cookies["admin_session"];
+  const token = request.cookies.get("admin_session")?.value;
 
   if (!token || !(await verifyAdminToken(token))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -19,13 +19,16 @@ export async function POST(
 
   try {
     const member = await prisma.member.findFirst({
-        where: {
-          card: {
-            cardCode: cardCode
-          }
-        }
-      });
-    if (!member) return NextResponse.json({ error: "Not found" }, { status: 404 });
+      where: {
+        card: {
+          cardCode,
+        },
+      },
+    });
+
+    if (!member) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
 
     const updatedMember = await prisma.member.update({
       where: { id: member.id },
@@ -36,9 +39,13 @@ export async function POST(
       id: updatedMember.id,
       name: `${updatedMember.firstName} ${updatedMember.secondName}`,
       visits_total: updatedMember.visitsTotal,
-      visits_used: updatedMember.visitsUsed
+      visits_used: updatedMember.visitsUsed,
     });
   } catch (error) {
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    console.error("Reset visits error:", error);
+    return NextResponse.json(
+        { error: "Internal Server Error" },
+        { status: 500 }
+    );
   }
 }
