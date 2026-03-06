@@ -18,6 +18,7 @@ export default function MemberPage({ params }: { params: Promise<{ cardCode: str
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isAdmin, setIsAdmin] = useState<boolean>(false)
+  const [isCheckingIn, setIsCheckingIn] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -68,8 +69,9 @@ export default function MemberPage({ params }: { params: Promise<{ cardCode: str
   const isExhausted = remaining <= 0
 
   const handleCheckIn = async () => {
-    if (!member || isExhausted) return
+    if (!member || isExhausted || isCheckingIn) return
 
+    setIsCheckingIn(true);
     try {
       const response = await fetch(`/api/members/${resolvedParams.cardCode}/check-in`, {
         method: 'POST',
@@ -85,6 +87,8 @@ export default function MemberPage({ params }: { params: Promise<{ cardCode: str
     } catch (err) {
       console.error('Check-in error:', err);
       setMember(prev => prev ? { ...prev, visits_used: prev.visits_used + 1 } : null);
+    } finally {
+      setIsCheckingIn(false);
     }
   }
 
@@ -207,11 +211,14 @@ export default function MemberPage({ params }: { params: Promise<{ cardCode: str
           <div className="space-y-4 mb-6">
             <button
               onClick={handleCheckIn}
-              disabled={isExhausted}
+              disabled={isExhausted || isCheckingIn}
               className="btn btn-primary w-full"
-              style={{ cursor: isExhausted ? 'not-allowed' : 'pointer' }}
+              style={{ 
+                cursor: (isExhausted || isCheckingIn) ? 'not-allowed' : 'pointer',
+                opacity: isCheckingIn ? 0.7 : 1
+              }}
             >
-              Check In
+              {isCheckingIn ? 'Checking In...' : 'Check In'}
             </button>
             <button
               onClick={handleReset}
