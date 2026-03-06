@@ -2,12 +2,11 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
-const SECRET = new TextEncoder().encode(process.env.ADMIN_SESSION_SECRET);
-
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-
   const adminSession = request.cookies.get("admin_session")?.value;
+
+  const SECRET = new TextEncoder().encode(process.env.ADMIN_SESSION_SECRET || "default_secret_for_safety");
 
   // Protect admin routes
   if (pathname.startsWith("/admin") || pathname.startsWith("/api/admin")) {
@@ -17,7 +16,7 @@ export async function middleware(request: NextRequest) {
         try {
           await jwtVerify(adminSession, SECRET);
           // If valid session, redirect away from login to admin dashboard
-          return NextResponse.redirect(new URL("/admin", request.url));
+          return NextResponse.redirect(new URL("/admin/members", request.url));
         } catch (e) {
           // Invalid token, allow access to login
         }
