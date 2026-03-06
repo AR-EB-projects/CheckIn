@@ -1,20 +1,31 @@
 import { SignJWT, jwtVerify } from "jose";
 
-const SECRET = new TextEncoder().encode(process.env.ADMIN_SESSION_SECRET);
+function getAdminSecret() {
+  const secret = process.env.ADMIN_SESSION_SECRET;
+
+  if (!secret) {
+    throw new Error("Missing ADMIN_SESSION_SECRET");
+  }
+
+  return new TextEncoder().encode(secret);
+}
 
 export async function createAdminToken() {
+  const secret = getAdminSecret();
+
   return await new SignJWT({ role: "ADMIN" })
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setExpirationTime("7d")
-    .sign(SECRET);
+      .setProtectedHeader({ alg: "HS256" })
+      .setIssuedAt()
+      .setExpirationTime("7d")
+      .sign(secret);
 }
 
 export async function verifyAdminToken(token: string) {
   try {
-    const { payload } = await jwtVerify(token, SECRET);
+    const secret = getAdminSecret();
+    const { payload } = await jwtVerify(token, secret);
     return payload;
-  } catch (error) {
+  } catch {
     return null;
   }
 }

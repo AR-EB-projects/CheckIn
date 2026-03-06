@@ -1,17 +1,13 @@
 import { PrismaClient } from "@prisma/client";
 
-// Always ensure dotenv is loaded if we're in a Node.js environment
-// This helps Prisma find PRISMA_CLIENT_ENGINE_TYPE and DATABASE_URL
-if (typeof process !== 'undefined') {
-  require('dotenv').config();
-}
-
-const globalForPrisma = global as unknown as { prisma: PrismaClient };
+const globalForPrisma = globalThis as unknown as {
+    prisma: PrismaClient | undefined;
+};
 
 export const prisma =
-  globalForPrisma.prisma ||
-  new PrismaClient({
-    log: ["query"],
-  });
+    globalForPrisma.prisma ??
+    new PrismaClient();
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+if (process.env.NODE_ENV !== "production") {
+    globalForPrisma.prisma = prisma;
+}
