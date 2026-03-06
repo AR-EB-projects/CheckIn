@@ -14,6 +14,7 @@ export default function MemberPage({ params }: { params: Promise<{ id: string }>
   const [member, setMember] = useState<Member | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isAdmin, setIsAdmin] = useState<boolean>(false)
 
   useEffect(() => {
     // Mock data - в реалност тук ще има API call
@@ -24,6 +25,26 @@ export default function MemberPage({ params }: { params: Promise<{ id: string }>
       visits_used: 4
     }
 
+    // Проста проверка - ако има ?admin=1 в URL, значи е администратор
+    // В реалност тук ще има JWT token/cookie проверка
+    let adminCheck = false
+    
+    // Проверка за localStorage (работи само в production)
+    try {
+      adminCheck = localStorage.getItem('isAdmin') === 'true'
+    } catch (e) {
+      console.log('localStorage не работи:', e)
+    }
+    
+    // Проверка за URL параметър (fallback за development)
+    if (!adminCheck && typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search)
+      adminCheck = urlParams.get('admin') === '1'
+    }
+    
+    setIsAdmin(adminCheck)
+    console.log('Admin check:', adminCheck, 'from localStorage:', localStorage.getItem('isAdmin'), 'from URL:', window.location.search)
+
     setTimeout(() => {
       setMember(mockMember)
       setLoading(false)
@@ -32,6 +53,32 @@ export default function MemberPage({ params }: { params: Promise<{ id: string }>
 
   const remaining = member ? member.visits_total - member.visits_used : 0
   const isExhausted = remaining <= 0
+
+  const handleCheckIn = () => {
+    if (!member || isExhausted) return
+    
+    console.log('CHECK IN натиснат за:', member.name)
+    console.log('Преди:', member.visits_used)
+    
+    // Mock API call за check-in
+    const newVisitsUsed = member.visits_used + 1
+    console.log('След:', newVisitsUsed)
+    
+    setMember(prev => {
+      if (!prev) return null
+      const updated = { ...prev, visits_used: newVisitsUsed }
+      console.log('Updated member:', updated)
+      return updated
+    })
+  }
+
+  const handleAdminLogout = () => {
+    console.log('Logout clicked!')
+    try {
+      localStorage.removeItem('isAdmin')
+    } catch (e) {}
+    setIsAdmin(false)
+  }
 
   if (loading) {
     return (
@@ -96,6 +143,44 @@ export default function MemberPage({ params }: { params: Promise<{ id: string }>
             <strong>Картата е изчерпана</strong>
             <p className="mt-2 mb-0">Няма оставащи посещения. Моля, свържете се с администратор.</p>
           </div>
+        )}
+
+        {/* CHECK IN бутон само за администратори */}
+        {isAdmin && !isExhausted && (
+          <button
+            onClick={handleCheckIn}
+            className="btn btn-primary w-full mb-4"
+            style={{ cursor: 'pointer' }}
+          >
+            CHECK IN
+          </button>
+        )}
+
+        {/* Debug информация */}
+        <div style={{ 
+          position: 'fixed', 
+          top: '10px', 
+          right: '10px', 
+          background: 'rgba(0,0,0,0.8)', 
+          color: 'white', 
+          padding: '10px', 
+          borderRadius: '5px',
+          fontSize: '12px'
+        }}>
+          isAdmin: {isAdmin.toString()}<br/>
+          member.visits_used: {member?.visits_used || 0}<br/>
+          remaining: {remaining}
+        </div>
+
+        {/* Бутон за изход от администраторски режим */}
+        {isAdmin && (
+          <button
+            onClick={handleAdminLogout}
+            className="btn btn-secondary w-full mb-6"
+            style={{ cursor: 'pointer' }}
+          >
+            Изход от администраторски режим
+          </button>
         )}
 
         <div className="mt-6 text-center">
