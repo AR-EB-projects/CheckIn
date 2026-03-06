@@ -338,6 +338,20 @@ input:focus, select:focus {
   color: var(--warning);
 }
 
+.badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.badge-warning {
+  background: var(--warning);
+  color: #000;
+}
+
 /* Loading Spinner */
 .loading {
   display: inline-block;

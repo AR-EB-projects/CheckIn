@@ -3,13 +3,15 @@
 import { useState, useEffect, use } from 'react'
 
 interface Member {
-  id: number
+  id: string
+  cardCode: string
   name: string
   visits_total: number
   visits_used: number
+  isActive?: boolean
 }
 
-export default function MemberPage({ params }: { params: Promise<{ id: string }> }) {
+export default function MemberPage({ params }: { params: Promise<{ cardCode: string }> }) {
   const resolvedParams = use(params)
   const [member, setMember] = useState<Member | null>(null)
   const [loading, setLoading] = useState(true)
@@ -25,17 +27,19 @@ export default function MemberPage({ params }: { params: Promise<{ id: string }>
         setIsAdmin(sessionData.isAdmin);
 
         // Fetch member data
-        const memberRes = await fetch(`/api/members/${resolvedParams.id}`);
+        const memberRes = await fetch(`/api/members/${resolvedParams.cardCode}`);
         if (memberRes.ok) {
           const data = await memberRes.json();
           setMember(data);
         } else {
           // Fallback to mock if API not ready or fails
           const mockMember: Member = {
-            id: parseInt(resolvedParams.id),
+            id: 'mock-id',
+            cardCode: resolvedParams.cardCode,
             name: 'Anna Petrova',
             visits_total: 8,
-            visits_used: 4
+            visits_used: 4,
+            isActive: true
           }
           setMember(mockMember);
         }
@@ -43,10 +47,12 @@ export default function MemberPage({ params }: { params: Promise<{ id: string }>
         console.error('Error fetching data:', err);
         // Fallback to mock
         setMember({
-          id: parseInt(resolvedParams.id),
+          id: 'mock-id',
+          cardCode: resolvedParams.cardCode,
           name: 'Anna Petrova',
           visits_total: 8,
-          visits_used: 4
+          visits_used: 4,
+          isActive: true
         });
       } finally {
         setLoading(false);
@@ -54,7 +60,7 @@ export default function MemberPage({ params }: { params: Promise<{ id: string }>
     };
 
     fetchData();
-  }, [resolvedParams.id])
+  }, [resolvedParams.cardCode])
 
   const remaining = member ? member.visits_total - member.visits_used : 0
   const isExhausted = remaining <= 0
@@ -63,7 +69,7 @@ export default function MemberPage({ params }: { params: Promise<{ id: string }>
     if (!member || isExhausted) return
     
     try {
-      const response = await fetch(`/api/members/${resolvedParams.id}/check-in`, {
+      const response = await fetch(`/api/members/${resolvedParams.cardCode}/check-in`, {
         method: 'POST',
       });
 
@@ -84,7 +90,7 @@ export default function MemberPage({ params }: { params: Promise<{ id: string }>
     if (!member) return
     
     try {
-      const response = await fetch(`/api/members/${resolvedParams.id}/reset`, {
+      const response = await fetch(`/api/members/${resolvedParams.cardCode}/reset`, {
         method: 'POST',
       });
 
@@ -138,7 +144,7 @@ export default function MemberPage({ params }: { params: Promise<{ id: string }>
       <div className="container flex items-center justify-center" style={{ minHeight: '100vh' }}>
         <div className="alert alert-warning">
           <h3 className="mb-2">Член не е намерен</h3>
-          <p>Не съществува член с ID: {resolvedParams.id}</p>
+          <p>Не съществува член с код на карта: {resolvedParams.cardCode}</p>
         </div>
       </div>
     )
@@ -146,14 +152,16 @@ export default function MemberPage({ params }: { params: Promise<{ id: string }>
 
   return (
     <div className="container flex items-center justify-center fade-in" style={{ minHeight: '100vh' }}>
-      <div className="member-card" style={{ maxWidth: '450px', width: '100%' }}>
-        <div className="text-center mb-8">
-          <div className="text-gold mb-4" style={{ fontSize: '3rem' }}>♦</div>
-          <h1 className="member-name mb-2">{member.name}</h1>
-          <p className="text-secondary" style={{ fontSize: '1rem' }}>ID: {member.id}</p>
+      <div className="member-card" style={{ maxWidth: '420px', width: '100%' }}>
+        <div className="text-center mb-6">
+          <div className="text-gold mb-3" style={{ fontSize: '2.5rem' }}>♦</div>
+          <h1 className="member-name">{member.name}</h1>
+          {member.isActive === false && (
+            <div className="badge badge-warning mb-2">Активиране на карта...</div>
+          )}
         </div>
 
-        <div className="visit-info mb-8">
+        <div className="visit-info mb-6">
           <div className="visit-item">
             <span className="visit-number">{member.visits_total}</span>
             <div className="visit-label">Карта</div>
@@ -171,9 +179,9 @@ export default function MemberPage({ params }: { params: Promise<{ id: string }>
         </div>
 
         {isExhausted && (
-          <div className="alert alert-warning mb-6 text-center">
-            <strong className="block mb-2">Картата е изчерпана</strong>
-            <p className="mb-0">Няма оставащи посещения. Моля, свържете се с администратор.</p>
+          <div className="alert alert-warning mb-6">
+            <strong>Картата е изчерпана</strong>
+            <p className="mt-2 mb-0">Няма оставащи посещения. Моля, свържете се с администратор.</p>
           </div>
         )}
 
@@ -184,12 +192,7 @@ export default function MemberPage({ params }: { params: Promise<{ id: string }>
               onClick={handleCheckIn}
               disabled={isExhausted}
               className="btn btn-primary w-full"
-              style={{ 
-                cursor: isExhausted ? 'not-allowed' : 'pointer',
-                padding: '14px 20px',
-                fontSize: '16px',
-                fontWeight: '600'
-              }}
+              style={{ cursor: isExhausted ? 'not-allowed' : 'pointer' }}
             >
               Check In
             </button>
@@ -201,10 +204,8 @@ export default function MemberPage({ params }: { params: Promise<{ id: string }>
                 border: '1px solid var(--gold)',
                 color: 'var(--gold)',
                 background: 'transparent',
-                padding: '14px 20px',
-                borderRadius: 'var(--radius)',
-                fontSize: '16px',
-                fontWeight: '600'
+                padding: '0.75rem',
+                borderRadius: 'var(--radius)'
               }}
             >
               Reset
@@ -212,11 +213,38 @@ export default function MemberPage({ params }: { params: Promise<{ id: string }>
           </div>
         )}
 
-        <div className="mt-8 text-center">
-          <p className="text-muted" style={{ fontSize: '0.9rem' }}>
+        {/* Debug информация */}
+        <div style={{ 
+          position: 'fixed', 
+          top: '10px', 
+          right: '10px', 
+          background: 'rgba(0,0,0,0.8)', 
+          color: 'white', 
+          padding: '10px', 
+          borderRadius: '5px',
+          fontSize: '12px'
+        }}>
+          isAdmin: {isAdmin.toString()}<br/>
+          member.visits_used: {member?.visits_used || 0}<br/>
+          remaining: {remaining}
+        </div>
+
+        {/* Бутон за изход от администраторски режим */}
+        {isAdmin && (
+          <button
+            onClick={handleAdminLogout}
+            className="btn btn-secondary w-full mb-6"
+            style={{ cursor: 'pointer' }}
+          >
+            Изход от администраторски режим
+          </button>
+        )}
+
+        <div className="mt-6 text-center">
+          <p className="text-muted" style={{ fontSize: '0.85rem' }}>
             Dalida Dance Studio
           </p>
-          <p className="text-muted" style={{ fontSize: '0.8rem' }}>
+          <p className="text-muted" style={{ fontSize: '0.75rem' }}>
             NFC Check-in System
           </p>
         </div>
