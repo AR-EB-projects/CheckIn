@@ -82,12 +82,7 @@ export default function AdminMembersPage() {
   return (
     <div className="container p-6 fade-in">
       <div className="flex-col flex items-center text-center mb-8">
-        <img
-          src="/logo.png"
-          alt="Logo"
-          className="mb-3 mx-auto"
-          style={{ width: '100px', height: '100px', objectFit: 'contain' }}
-        />
+        
         <h1 className="text-gold mb-2" style={{ fontSize: '2rem', fontWeight: '600' }}>
           Администраторски панел
         </h1>
@@ -99,6 +94,12 @@ export default function AdminMembersPage() {
           className="btn btn-primary"
         >
           Добави член
+        </button>
+        <button 
+          onClick={() => router.push("/admin/questions/add")}
+          className="btn btn-primary"
+        >
+          Добави въпрос
         </button>
         <button 
           onClick={handleLogout}
