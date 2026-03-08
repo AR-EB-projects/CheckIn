@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { publishQuestionsUpdated } from "@/lib/memberEvents";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -93,6 +94,8 @@ export async function POST(
         answer,
       },
     });
+
+    publishQuestionsUpdated();
 
     return NextResponse.json({ success: true, answer: savedAnswer });
   } catch (error) {

@@ -5,8 +5,10 @@ type MemberEvent = {
 };
 
 type MemberSubscriber = (event: MemberEvent) => void;
+type QuestionUpdatesSubscriber = (event: { type: "questions-updated"; timestamp: number }) => void;
 
 const subscribersByCardCode = new Map<string, Set<MemberSubscriber>>();
+const questionUpdatesSubscribers = new Set<QuestionUpdatesSubscriber>();
 
 export function subscribeMemberEvents(
   cardCode: string,
@@ -71,4 +73,21 @@ export function publishQuestionsUpdated() {
       }
     }
   }
+
+  const questionEvent = { type: "questions-updated" as const, timestamp: eventTimestamp };
+  for (const subscriber of questionUpdatesSubscribers) {
+    try {
+      subscriber(questionEvent);
+    } catch (error) {
+      console.error("Question update subscriber error:", error);
+    }
+  }
+}
+
+export function subscribeQuestionsUpdated(subscriber: QuestionUpdatesSubscriber) {
+  questionUpdatesSubscribers.add(subscriber);
+
+  return () => {
+    questionUpdatesSubscribers.delete(subscriber);
+  };
 }

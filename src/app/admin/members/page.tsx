@@ -86,6 +86,26 @@ export default function AdminMembersPage() {
     }
   }, [view]);
 
+  useEffect(() => {
+    if (view !== "questions") return;
+
+    const eventSource = new EventSource("/api/admin/questions/events");
+    eventSource.onmessage = async (event) => {
+      try {
+        const payload = JSON.parse(event.data) as { type?: string };
+        if (payload.type === "questions-updated") {
+          await fetchQuestions();
+        }
+      } catch (err) {
+        console.error("Admin questions SSE parse error:", err);
+      }
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [view]);
+
   const handleLogout = async () => {
     await fetch("/api/admin/logout", { method: "POST" });
     router.push("/admin/login");
