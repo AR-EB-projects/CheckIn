@@ -548,7 +548,12 @@ export default function AdminMembersPage() {
                 {questionAnswers.length} отговора:
               </h4>
               
-              {questionAnswers.length === 0 ? (
+              {isLoadingAnswers ? (
+                <div className="flex flex-col items-center justify-center" style={{ minHeight: '140px' }}>
+                  <div className="loading mb-3"></div>
+                  <p className="text-secondary">Зареждане на отговорите...</p>
+                </div>
+              ) : questionAnswers.length === 0 ? (
                 <div className="alert alert-warning">
                   Все още няма отговори за този въпрос.
                 </div>
@@ -560,7 +565,7 @@ export default function AdminMembersPage() {
                   borderRadius: '8px',
                   background: 'var(--bg-secondary)'
                 }}>
-                  {questionAnswers.map((item: any, index: number) => (
+                  {questionAnswers.map((item: QuestionAnswer, index: number) => (
                     <div key={item.id} style={{ 
                       padding: '12px 16px',
                       borderBottom: index < questionAnswers.length - 1 ? '1px solid var(--border-color)' : 'none',
