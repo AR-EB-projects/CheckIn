@@ -12,6 +12,16 @@ interface Member {
   isActive?: boolean
 }
 
+interface Question {
+  id: string
+  text: string
+}
+
+interface MemberAnswer {
+  questionId: string
+  answer: string
+}
+
 export default function MemberPage({ params }: { params: Promise<{ cardCode: string }> }) {
   const resolvedParams = use(params)
   const [member, setMember] = useState<Member | null>(null)
@@ -19,7 +29,23 @@ export default function MemberPage({ params }: { params: Promise<{ cardCode: str
   const [error, setError] = useState<string | null>(null)
   const [isAdmin, setIsAdmin] = useState<boolean>(false)
   const [isCheckingIn, setIsCheckingIn] = useState(false)
+  const [questions, setQuestions] = useState<Question[]>([])
+  const [answers, setAnswers] = useState<Record<string, string>>({})
+  const [savingAnswers, setSavingAnswers] = useState<Record<string, boolean>>({})
+  const [answerStatus, setAnswerStatus] = useState<Record<string, string>>({})
   const router = useRouter()
+
+  const refreshQuestions = async () => {
+    try {
+      const questionsRes = await fetch('/api/questions', { cache: 'no-store' })
+      if (questionsRes.ok) {
+        const questionsData: Question[] = await questionsRes.json()
+        setQuestions(questionsData)
+      }
+    } catch (err) {
+      console.error('Questions refresh error:', err)
+    }
+  }
 
   const fetchMember = async (cardCode: string, shouldSetLoading = false) => {
     if (shouldSetLoading) {
@@ -56,6 +82,23 @@ export default function MemberPage({ params }: { params: Promise<{ cardCode: str
         const sessionRes = await fetch('/api/admin/check-session')
         const sessionData = await sessionRes.json()
         setIsAdmin(sessionData.isAdmin)
+
+        if (!sessionData.isAdmin) {
+          const answersRes = await fetch(`/api/members/${resolvedParams.cardCode}/answers`, { cache: 'no-store' })
+          await refreshQuestions()
+
+          if (answersRes.ok) {
+            const answersData: { answers: MemberAnswer[] } = await answersRes.json()
+            const answersMap = Object.fromEntries(
+              answersData.answers.map((item) => [item.questionId, item.answer])
+            ) as Record<string, string>
+            setAnswers(answersMap)
+          }
+        } else {
+          setQuestions([])
+          setAnswers({})
+          setAnswerStatus({})
+        }
       } catch (err) {
         console.error('Error fetching data:', err)
       }
@@ -69,11 +112,14 @@ export default function MemberPage({ params }: { params: Promise<{ cardCode: str
   useEffect(() => {
     const eventSource = new EventSource(`/api/members/${resolvedParams.cardCode}/events`)
 
-    eventSource.onmessage = (event) => {
+    eventSource.onmessage = async (event) => {
       try {
         const payload = JSON.parse(event.data) as { type?: string }
         if (payload.type === 'check-in' || payload.type === 'reset') {
-          fetchMember(resolvedParams.cardCode)
+          await fetchMember(resolvedParams.cardCode)
+        }
+        if ((payload.type === 'questions-updated' || payload.type === 'question-created') && !isAdmin) {
+          await refreshQuestions()
         }
       } catch (err) {
         console.error('SSE parse error:', err)
@@ -83,10 +129,83 @@ export default function MemberPage({ params }: { params: Promise<{ cardCode: str
     return () => {
       eventSource.close()
     }
-  }, [resolvedParams.cardCode])
+  }, [resolvedParams.cardCode, isAdmin])
+
+  useEffect(() => {
+    if (isAdmin) return
+
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== 'questions_updated_at') return
+      void refreshQuestions()
+    }
+
+    window.addEventListener('storage', onStorage)
+    return () => {
+      window.removeEventListener('storage', onStorage)
+    }
+  }, [isAdmin])
+
+  useEffect(() => {
+    if (isAdmin) return
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        void refreshQuestions()
+      }
+    }
+
+    const onFocus = () => {
+      void refreshQuestions()
+    }
+
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onFocus)
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onFocus)
+    }
+  }, [isAdmin])
 
   const remaining = member ? member.visits_total - member.visits_used : 0
   const isExhausted = member ? remaining <= 0 : false
+
+  const handleAnswerChange = (questionId: string, value: string) => {
+    setAnswers((prev) => ({ ...prev, [questionId]: value }))
+  }
+
+  const handleSaveAnswer = async (questionId: string) => {
+    const currentAnswer = (answers[questionId] ?? '').trim()
+    if (!currentAnswer) {
+      setAnswerStatus((prev) => ({ ...prev, [questionId]: 'Моля, въведете отговор.' }))
+      return
+    }
+
+    setSavingAnswers((prev) => ({ ...prev, [questionId]: true }))
+    setAnswerStatus((prev) => ({ ...prev, [questionId]: '' }))
+
+    try {
+      const response = await fetch(`/api/members/${resolvedParams.cardCode}/answers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          questionId,
+          answer: currentAnswer,
+        }),
+      })
+
+      if (response.ok) {
+        setAnswerStatus((prev) => ({ ...prev, [questionId]: 'Запазено.' }))
+      } else {
+        setAnswerStatus((prev) => ({ ...prev, [questionId]: 'Грешка при запазване.' }))
+      }
+    } catch (err) {
+      console.error('Save answer error:', err)
+      setAnswerStatus((prev) => ({ ...prev, [questionId]: 'Грешка при запазване.' }))
+    } finally {
+      setSavingAnswers((prev) => ({ ...prev, [questionId]: false }))
+    }
+  }
 
   const handleCheckIn = async () => {
     if (!member || isExhausted || isCheckingIn) return
@@ -208,6 +327,181 @@ export default function MemberPage({ params }: { params: Promise<{ cardCode: str
                 {remaining}
               </span>
               <div className="visit-label">Остават</div>
+            </div>
+          </div>
+        )}
+
+        {!isAdmin && questions.length > 0 && (
+          <div className="mb-6" style={{ 
+            background: 'var(--bg-secondary)', 
+            borderRadius: '8px', 
+            padding: '16px',
+            border: '1px solid var(--border-color)',
+            maxHeight: '50vh',
+            overflow: 'auto'
+          }}>
+            <h3 style={{ 
+              fontSize: '1rem', 
+              fontWeight: '600', 
+              marginBottom: '12px', 
+              color: 'var(--accent-gold)' 
+            }}>
+              Въпроси:
+            </h3>
+            <div>
+              {loading ? (
+                <div style={{ textAlign: 'center', padding: '20px' }}>
+                  <div className="loading mb-4"></div>
+                </div>
+              ) : (
+                questions.map((question, index) => {
+                  if (index % 2 === 0 && index > 0) {
+                    return (
+                      <div key={question.id} style={{ 
+                        marginBottom: '12px',
+                        paddingBottom: '12px',
+                        borderBottom: '1px solid var(--border-color)',
+                        color: 'var(--text-primary)',
+                        fontSize: '14px',
+                        lineHeight: '1.4'
+                      }}>
+                        <div style={{ marginBottom: '8px' }}>{question.text}</div>
+                        <textarea
+                          value={answers[question.id] ?? ''}
+                          onChange={(event) => handleAnswerChange(question.id, event.target.value)}
+                          placeholder="Вашият отговор"
+                          style={{
+                            width: '100%',
+                            minHeight: '80px',
+                            background: 'transparent',
+                            border: '1px solid var(--border-color)',
+                            borderRadius: '6px',
+                            padding: '8px 10px',
+                            color: 'var(--text-primary)',
+                            resize: 'vertical',
+                            fontFamily: 'inherit',
+                            fontSize: '14px',
+                            lineHeight: '1.4'
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleSaveAnswer(question.id)}
+                          disabled={savingAnswers[question.id] === true}
+                          className="btn btn-secondary"
+                          style={{
+                            marginTop: '8px',
+                            cursor: savingAnswers[question.id] ? 'not-allowed' : 'pointer',
+                          }}
+                        >
+                          {savingAnswers[question.id] ? 'Saving...' : 'Запази'}
+                        </button>
+                        {answerStatus[question.id] && (
+                          <div style={{ marginTop: '6px', fontSize: '12px', opacity: 0.85 }}>
+                            {answerStatus[question.id]}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  } else if (index === questions.length - 1) {
+                    return (
+                      <div key={question.id} style={{ 
+                        marginBottom: '0',
+                        paddingBottom: '0',
+                        borderBottom: 'none',
+                        color: 'var(--text-primary)',
+                        fontSize: '14px',
+                        lineHeight: '1.4'
+                      }}>
+                        <div style={{ marginBottom: '8px' }}>{question.text}</div>
+                        <textarea
+                          value={answers[question.id] ?? ''}
+                          onChange={(event) => handleAnswerChange(question.id, event.target.value)}
+                          placeholder="Вашият отговор"
+                          style={{
+                            width: '100%',
+                            minHeight: '80px',
+                            background: 'transparent',
+                            border: '1px solid var(--border-color)',
+                            borderRadius: '6px',
+                            padding: '8px 10px',
+                            color: 'var(--text-primary)',
+                            resize: 'vertical',
+                            fontFamily: 'inherit',
+                            fontSize: '14px',
+                            lineHeight: '1.4'
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleSaveAnswer(question.id)}
+                          disabled={savingAnswers[question.id] === true}
+                          className="btn btn-secondary"
+                          style={{
+                            marginTop: '8px',
+                            cursor: savingAnswers[question.id] ? 'not-allowed' : 'pointer',
+                          }}
+                        >
+                          {savingAnswers[question.id] ? 'Saving...' : 'Запази'}
+                        </button>
+                        {answerStatus[question.id] && (
+                          <div style={{ marginTop: '6px', fontSize: '12px', opacity: 0.85 }}>
+                            {answerStatus[question.id]}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  } else {
+                    return (
+                      <div key={question.id} style={{ 
+                        marginBottom: '12px',
+                        paddingBottom: '12px',
+                        borderBottom: '1px solid var(--border-color)',
+                        color: 'var(--text-primary)',
+                        fontSize: '14px',
+                        lineHeight: '1.4'
+                      }}>
+                        <div style={{ marginBottom: '8px' }}>{question.text}</div>
+                        <textarea
+                          value={answers[question.id] ?? ''}
+                          onChange={(event) => handleAnswerChange(question.id, event.target.value)}
+                          placeholder="Вашият отговор"
+                          style={{
+                            width: '100%',
+                            minHeight: '80px',
+                            background: 'transparent',
+                            border: '1px solid var(--border-color)',
+                            borderRadius: '6px',
+                            padding: '8px 10px',
+                            color: 'var(--text-primary)',
+                            resize: 'vertical',
+                            fontFamily: 'inherit',
+                            fontSize: '14px',
+                            lineHeight: '1.4'
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleSaveAnswer(question.id)}
+                          disabled={savingAnswers[question.id] === true}
+                          className="btn btn-secondary"
+                          style={{
+                            marginTop: '8px',
+                            cursor: savingAnswers[question.id] ? 'not-allowed' : 'pointer',
+                          }}
+                        >
+                          {savingAnswers[question.id] ? 'Saving...' : 'Запази'}
+                        </button>
+                        {answerStatus[question.id] && (
+                          <div style={{ marginTop: '6px', fontSize: '12px', opacity: 0.85 }}>
+                            {answerStatus[question.id]}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+                })
+              )}
             </div>
           </div>
         )}

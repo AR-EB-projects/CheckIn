@@ -25,6 +25,7 @@ export default function AddQuestionPage() {
       });
 
       if (response.ok) {
+        localStorage.setItem("questions_updated_at", String(Date.now()));
         router.push("/admin/members");
       } else {
         const data = await response.json();

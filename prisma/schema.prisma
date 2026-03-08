@@ -8,12 +8,13 @@ datasource db {
 }
 
 model Member {
-  id          String @id @default(uuid())
+  id          String                 @id @default(uuid())
   firstName   String
   secondName  String
-  visitsTotal Int    @default(0)
-  visitsUsed  Int    @default(0)
+  visitsTotal Int                    @default(0)
+  visitsUsed  Int                    @default(0)
   cards       Card[]
+  answers     MemberQuestionAnswer[]
 
   @@map("members")
 }
@@ -27,4 +28,29 @@ model Card {
   createdAt DateTime @default(now())
 
   @@map("cards")
+}
+
+model Question {
+  id        String                 @id @default(uuid())
+  text      String
+  isActive  Boolean                @default(true)
+  answers   MemberQuestionAnswer[]
+  createdAt DateTime               @default(now())
+  updatedAt DateTime               @updatedAt
+
+  @@map("questions")
+}
+
+model MemberQuestionAnswer {
+  id         String   @id @default(uuid())
+  memberId   String
+  questionId String
+  answer     String
+  member     Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([memberId, questionId])
+  @@map("member_question_answers")
 }
