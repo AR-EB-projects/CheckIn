@@ -29,8 +29,8 @@ export default function EditMemberPage() {
 
   const [firstName, setFirstName] = useState("");
   const [secondName, setSecondName] = useState("");
-  const [visitsTotal, setVisitsTotal] = useState(0);
-  const [visitsUsed, setVisitsUsed] = useState(0);
+  const [visitsTotal, setVisitsTotal] = useState("0");
+  const [visitsUsed, setVisitsUsed] = useState("0");
   const [cards, setCards] = useState<Card[]>([]);
 
   useEffect(() => {
@@ -45,8 +45,8 @@ export default function EditMemberPage() {
         const member: MemberResponse = await response.json();
         setFirstName(member.firstName);
         setSecondName(member.secondName);
-        setVisitsTotal(member.visitsTotal);
-        setVisitsUsed(member.visitsUsed);
+        setVisitsTotal(String(member.visitsTotal));
+        setVisitsUsed(String(member.visitsUsed));
         setCards(member.cards ?? []);
       } catch (err) {
         console.error("Error fetching member:", err);
@@ -65,12 +65,30 @@ export default function EditMemberPage() {
     event.preventDefault();
     setError(null);
 
+    const parsedVisitsTotal = Number(visitsTotal);
+    const parsedVisitsUsed = Number(visitsUsed);
+
+    if (
+      visitsTotal.trim() === "" ||
+      visitsUsed.trim() === "" ||
+      Number.isNaN(parsedVisitsTotal) ||
+      Number.isNaN(parsedVisitsUsed)
+    ) {
+      setError("Visits must be valid numbers.");
+      return;
+    }
+
+    if (parsedVisitsTotal < 0 || parsedVisitsUsed < 0) {
+      setError("Visits cannot be negative.");
+      return;
+    }
+
     if (!firstName.trim()) {
       setError("First name is required.");
       return;
     }
 
-    if (visitsUsed > visitsTotal) {
+    if (parsedVisitsUsed > parsedVisitsTotal) {
       setError("Used visits cannot be greater than total visits.");
       return;
     }
@@ -85,8 +103,8 @@ export default function EditMemberPage() {
         body: JSON.stringify({
           firstName: firstName.trim(),
           secondName: secondName.trim(),
-          visitsTotal,
-          visitsUsed,
+          visitsTotal: parsedVisitsTotal,
+          visitsUsed: parsedVisitsUsed,
         }),
       });
 
@@ -111,7 +129,6 @@ export default function EditMemberPage() {
       <div className="container flex items-center justify-center" style={{ minHeight: "100vh" }}>
         <div className="text-center">
           <div className="loading mb-4"></div>
-          <p className="text-secondary">Loading member...</p>
         </div>
       </div>
     );
@@ -157,7 +174,7 @@ export default function EditMemberPage() {
                 min={0}
                 className="input w-full"
                 value={visitsTotal}
-                onChange={(e) => setVisitsTotal(Number(e.target.value))}
+                onChange={(e) => setVisitsTotal(e.target.value)}
                 disabled={saving}
               />
             </div>
@@ -167,10 +184,10 @@ export default function EditMemberPage() {
               <input
                 type="number"
                 min={0}
-                max={visitsTotal}
+                max={visitsTotal === "" ? undefined : Number(visitsTotal)}
                 className="input w-full"
                 value={visitsUsed}
-                onChange={(e) => setVisitsUsed(Number(e.target.value))}
+                onChange={(e) => setVisitsUsed(e.target.value)}
                 disabled={saving}
               />
             </div>
