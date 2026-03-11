@@ -30,7 +30,7 @@ export default function AdminNotificationsPage() {
 
   const [type, setType] = useState<NotificationType>("trainer_message");
   const [broadcast, setBroadcast] = useState(false);
-  const [memberId, setMemberId] = useState("");
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const [memberQuery, setMemberQuery] = useState("");
   const [trainingDate, setTrainingDate] = useState("");
   const [trainingTime, setTrainingTime] = useState("");
@@ -60,11 +60,6 @@ export default function AdminNotificationsPage() {
   const isTrainingReminder = type === "training_reminder";
   const isTrainerMessage = type === "trainer_message";
 
-  const selectedMember = useMemo(
-    () => members.find((member) => member.id === memberId) ?? null,
-    [memberId, members]
-  );
-
   const filteredMembers = useMemo(() => {
     const query = memberQuery.trim().toLowerCase();
     if (!query) {
@@ -83,14 +78,14 @@ export default function AdminNotificationsPage() {
     if (isLoadingMembers || isSending) {
       return false;
     }
-    if (!broadcast && !memberId) {
+    if (!broadcast && selectedMemberIds.length === 0) {
       return false;
     }
     if (isTrainerMessage && trainerMessage.trim() === "") {
       return false;
     }
     return true;
-  }, [broadcast, isLoadingMembers, isSending, isTrainerMessage, memberId, trainerMessage]);
+  }, [broadcast, isLoadingMembers, isSending, isTrainerMessage, selectedMemberIds, trainerMessage]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -106,7 +101,7 @@ export default function AdminNotificationsPage() {
       };
 
       if (!broadcast) {
-        requestBody.memberId = memberId;
+        requestBody.memberIds = selectedMemberIds;
       }
 
       if (isTrainingReminder && trainingTime.trim() && !isValid24HourTime(trainingTime.trim())) {
@@ -206,7 +201,7 @@ export default function AdminNotificationsPage() {
         {!broadcast && (
           <div className="mb-4">
             <label htmlFor="memberSearch" className="text-secondary" style={{ display: "block", marginBottom: "8px", fontWeight: "600" }}>
-              Изберете член
+              Изберете членове
             </label>
             <input
               id="memberSearch"
@@ -242,14 +237,17 @@ export default function AdminNotificationsPage() {
                 </div>
               )}
               {filteredMembers.map((member, index) => {
-                const isSelected = member.id === memberId;
+                const isSelected = selectedMemberIds.includes(member.id);
                 return (
                   <button
                     key={member.id}
                     type="button"
                     onClick={() => {
-                      setMemberId(member.id);
-                      setMemberQuery(formatMemberLabel(member));
+                      setSelectedMemberIds((previous) =>
+                        previous.includes(member.id)
+                          ? previous.filter((id) => id !== member.id)
+                          : [...previous, member.id]
+                      );
                     }}
                     style={{
                       width: "100%",
@@ -284,6 +282,36 @@ export default function AdminNotificationsPage() {
                 );
               })}
             </div>
+            {selectedMemberIds.length > 0 && (
+              <div style={{ marginTop: "10px", display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                {selectedMemberIds.map((id) => {
+                  const member = members.find((item) => item.id === id);
+                  if (!member) {
+                    return null;
+                  }
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() =>
+                        setSelectedMemberIds((previous) => previous.filter((memberId) => memberId !== id))
+                      }
+                      style={{
+                        border: "1px solid var(--accent-gold-color)",
+                        borderRadius: "9999px",
+                        padding: "6px 12px",
+                        background: "rgba(201, 168, 76, 0.12)",
+                        color: "var(--text-primary)",
+                        cursor: "pointer",
+                        fontSize: "12px"
+                      }}
+                    >
+                      {formatMemberLabel(member)} ×
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
@@ -398,32 +426,6 @@ export default function AdminNotificationsPage() {
           </button>
         </div>
       </form>
-
-      {rawResponse && (
-        <div className="card mt-6" style={{ 
-          maxWidth: "600px", 
-          margin: "24px auto 0",
-          background: "var(--bg-card)",
-          border: "1px solid var(--accent-gold-color)"
-        }}>
-          <h3 className="text-gold mb-3" style={{ fontSize: "1rem", fontWeight: "600" }}>
-            API отговор
-          </h3>
-          <pre style={{ 
-            whiteSpace: "pre-wrap", 
-            wordBreak: "break-word", 
-            margin: 0,
-            background: "var(--bg-secondary)",
-            padding: "16px",
-            borderRadius: "8px",
-            fontSize: "12px",
-            color: "var(--text-secondary)",
-            border: "1px solid var(--border-color)"
-          }}>
-            {rawResponse}
-          </pre>
-        </div>
-      )}
     </div>
   );
 }
