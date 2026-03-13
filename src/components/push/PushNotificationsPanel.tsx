@@ -561,7 +561,14 @@ export function PushNotificationsPanel({ cardCode }: PushNotificationsPanelProps
       {isSupported && (
         <div className="flex items-center justify-center gap-3 mt-4" style={{ flexWrap: "wrap" }}>
           {!isSubscribed && (
-          <button
+            <>
+              <p
+                className="text-secondary"
+                style={{ width: "100%", textAlign: "center", margin: "0 0 8px", fontSize: "13px" }}
+              >
+                Разрешете известията за напомняния за тренировки и информация за посещения.
+              </p>
+              <button
             type="button"
             onClick={handleEnableNotifications}
             className="btn btn-primary"
@@ -618,8 +625,9 @@ export function PushNotificationsPanel({ cardCode }: PushNotificationsPanelProps
                 }
               }
             `}</style>
-          </button>
-        )}
+              </button>
+            </>
+          )}
 
           {isSubscribed && (
             <button
