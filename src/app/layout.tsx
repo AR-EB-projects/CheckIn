@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   icons: {
     icon: "/logo.png",
-    apple: "/logo.png",
+    apple: "/logo-black.png",
   },
   appleWebApp: {
     capable: true,
@@ -28,6 +28,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="bg">
+      <head>
+        <link rel="apple-touch-icon" href="/logo-black.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/logo-black.png" />
+        <link rel="apple-touch-icon" sizes="192x192" href="/logo-black.png" />
+        <link rel="apple-touch-icon" sizes="512x512" href="/logo-black.png" />
+      </head>
       <body>{children}</body>
     </html>
   );
