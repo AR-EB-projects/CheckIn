@@ -12,8 +12,11 @@ export async function GET(
   const { cardCode } = await params;
 
   try {
-    const card = await prisma.card.findUnique({
-      where: { cardCode },
+    const card = await prisma.card.findFirst({
+      where: {
+        cardCode,
+        isActive: true,
+      },
       include: {
         member: {
           select: {
@@ -54,8 +57,11 @@ export async function POST(
       return NextResponse.json({ error: "questionId and answer are required" }, { status: 400 });
     }
 
-    const card = await prisma.card.findUnique({
-      where: { cardCode },
+    const card = await prisma.card.findFirst({
+      where: {
+        cardCode,
+        isActive: true,
+      },
       include: {
         member: {
           select: {

@@ -95,7 +95,8 @@ export async function POST(request: NextRequest) {
       visitsUsed: true,
       cards: {
         select: { cardCode: true },
-        orderBy: { createdAt: "asc" },
+        where: { isActive: true },
+        orderBy: { createdAt: "desc" },
         take: 1,
       },
     },

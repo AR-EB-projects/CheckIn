@@ -30,7 +30,7 @@ export function buildNotificationPayload(
       };
     case "membership_almost_finished":
       return {
-        title: "Картата почти е изчерпана",
+        title: "Картата е почти изчерпана",
         body:
           remainingVisits === undefined
             ? `${memberPrefix}Остават малко посещения.`

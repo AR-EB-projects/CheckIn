@@ -15,8 +15,11 @@ export async function POST(
   { params }: { params: Promise<{ cardCode: string }> }
 ) {
   const { cardCode } = await params;
-  const card = await prisma.card.findUnique({
-    where: { cardCode },
+  const card = await prisma.card.findFirst({
+    where: {
+      cardCode,
+      isActive: true,
+    },
     select: {
       memberId: true,
     },
@@ -73,8 +76,11 @@ export async function DELETE(
   { params }: { params: Promise<{ cardCode: string }> }
 ) {
   const { cardCode } = await params;
-  const card = await prisma.card.findUnique({
-    where: { cardCode },
+  const card = await prisma.card.findFirst({
+    where: {
+      cardCode,
+      isActive: true,
+    },
     select: {
       memberId: true,
     },

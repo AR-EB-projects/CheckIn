@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { prisma } from "@/lib/db";
 import { subscribeMemberEvents } from "@/lib/memberEvents";
 
 export const runtime = "nodejs";
@@ -9,6 +10,23 @@ export async function GET(
   { params }: { params: Promise<{ cardCode: string }> }
 ) {
   const { cardCode } = await params;
+  const card = await prisma.card.findFirst({
+    where: {
+      cardCode,
+      isActive: true,
+    },
+    select: { id: true },
+  });
+
+  if (!card) {
+    return new Response(JSON.stringify({ error: "Member not found" }), {
+      status: 404,
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+      },
+    });
+  }
 
   const stream = new ReadableStream({
     start(controller) {

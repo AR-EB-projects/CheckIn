@@ -24,6 +24,7 @@ export async function POST(
         cards: {
           some: {
             cardCode,
+            isActive: true,
           },
         },
       },

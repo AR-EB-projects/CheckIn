@@ -19,7 +19,10 @@ export async function saveMemberNotificationHistory(
 
   try {
     const cards = await prisma.card.findMany({
-      where: { memberId },
+      where: {
+        memberId,
+        isActive: true,
+      },
       select: { cardCode: true },
     });
     for (const card of cards) {

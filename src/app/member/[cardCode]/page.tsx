@@ -535,7 +535,7 @@ export default function MemberPage({ params }: { params: Promise<{ cardCode: str
         {member && !isAdmin && (
           <PushNotificationsPanel cardCode={resolvedParams.cardCode} />
         )}
-        {!isAdmin && questions.length > 0 && (
+        {member && !isAdmin && questions.length > 0 && (
           <div className="mb-6" style={{
             background: 'var(--bg-secondary)',
             borderRadius: '8px',

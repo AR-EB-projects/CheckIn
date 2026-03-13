@@ -25,25 +25,45 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const cardCode = randomBytes(4).toString("hex").toUpperCase();
+        let newMember = null;
+        let lastError: unknown = null;
 
-        const newMember = await prisma.member.create({
-            data: {
-                firstName: safeFirstName,
-                secondName: safeSecondName,
-                visitsTotal: visitsTotal || 0,
-                visitsUsed: 0,
-                cards: {
-                    create: {
-                        cardCode,
-                        isActive: false,
+        for (let i = 0; i < 5; i++) {
+            const cardCode = randomBytes(4).toString("hex").toUpperCase();
+            try {
+                newMember = await prisma.member.create({
+                    data: {
+                        firstName: safeFirstName,
+                        secondName: safeSecondName,
+                        visitsTotal: visitsTotal || 0,
+                        visitsUsed: 0,
+                        cards: {
+                            create: {
+                                cardCode,
+                                isActive: true,
+                            },
+                        },
                     },
-                },
-            },
-            include: {
-                cards: true,
-            },
-        });
+                    include: {
+                        cards: true,
+                    },
+                });
+                break;
+            } catch (error) {
+                lastError = error;
+                const code =
+                    typeof error === "object" && error !== null && "code" in error
+                        ? String((error as { code?: unknown }).code)
+                        : "";
+                if (code !== "P2002") {
+                    throw error;
+                }
+            }
+        }
+
+        if (!newMember) {
+            throw lastError ?? new Error("Failed to generate unique card code");
+        }
 
         return NextResponse.json(newMember, { status: 201 });
     } catch (error) {
@@ -65,7 +85,11 @@ export async function GET(request: NextRequest) {
     try {
         const members = await prisma.member.findMany({
             include: {
-                cards: true,
+                cards: {
+                    orderBy: {
+                        createdAt: "desc",
+                    },
+                },
             },
             orderBy: {
                 firstName: "asc",

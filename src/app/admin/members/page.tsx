@@ -424,10 +424,11 @@ export default function AdminMembersPage() {
               <div className="flex gap-3">
                 <button 
                   onClick={() => {
-                    if (member.cards.length > 0) {
-                      router.push(`/member/${member.cards[0].cardCode}`);
+                    const activeCard = member.cards.find((card) => card.isActive);
+                    if (activeCard) {
+                      router.push(`/member/${activeCard.cardCode}`);
                     } else {
-                      alert("Този член няма присвоена карта.");
+                      alert("Този член няма активна карта.");
                     }
                   }}
                   className="btn btn-primary w-full"

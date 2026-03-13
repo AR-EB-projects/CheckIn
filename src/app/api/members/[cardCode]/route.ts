@@ -12,9 +12,10 @@ export async function GET(
   const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
   try {
-    const card = await prisma.card.findUnique({
+    const card = await prisma.card.findFirst({
       where: {
         cardCode,
+        isActive: true,
       },
       include: {
         member: true,
@@ -29,15 +30,6 @@ export async function GET(
           headers: { "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0" },
         }
       );
-    }
-
-    // Auto-activate card on first access if it's inactive
-    if (!card.isActive) {
-      await prisma.card.update({
-        where: { id: card.id },
-        data: { isActive: true }
-      });
-      card.isActive = true;
     }
 
     let notifications: {

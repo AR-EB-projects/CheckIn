@@ -12,8 +12,11 @@ export async function POST(
   const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
   try {
-    const card = await prisma.card.findUnique({
-      where: { cardCode },
+    const card = await prisma.card.findFirst({
+      where: {
+        cardCode,
+        isActive: true,
+      },
       select: { memberId: true },
     });
 

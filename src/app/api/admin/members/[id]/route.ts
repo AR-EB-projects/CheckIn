@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { verifyAdminToken } from "@/lib/adminAuth";
+import { randomBytes } from "crypto";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,7 +20,7 @@ export async function GET(
   try {
     const member = await prisma.member.findUnique({
       where: { id },
-      include: { cards: true },
+      include: { cards: { orderBy: { createdAt: "desc" } } },
     });
 
     if (!member) {
@@ -87,12 +88,89 @@ export async function PUT(
         visitsTotal,
         visitsUsed,
       },
-      include: { cards: true },
+      include: { cards: { orderBy: { createdAt: "desc" } } },
     });
 
     return NextResponse.json(updatedMember);
   } catch (error) {
     console.error("Member update error:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const token = request.cookies.get("admin_session")?.value;
+  const { id } = await params;
+
+  if (!token || !(await verifyAdminToken(token))) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const body = await request.json().catch(() => ({}));
+    const action = String((body as { action?: unknown })?.action ?? "").trim();
+
+    if (action !== "assign_new_card") {
+      return NextResponse.json({ error: "Unsupported action" }, { status: 400 });
+    }
+
+    const memberExists = await prisma.member.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+
+    if (!memberExists) {
+      return NextResponse.json({ error: "Member not found" }, { status: 404 });
+    }
+
+    let updatedMember = null;
+    let lastError: unknown = null;
+
+    for (let i = 0; i < 5; i++) {
+      const cardCode = randomBytes(4).toString("hex").toUpperCase();
+      try {
+        updatedMember = await prisma.$transaction(async (tx) => {
+          await tx.card.updateMany({
+            where: { memberId: id },
+            data: { isActive: false },
+          });
+
+          await tx.card.create({
+            data: {
+              memberId: id,
+              cardCode,
+              isActive: true,
+            },
+          });
+
+          return tx.member.findUnique({
+            where: { id },
+            include: { cards: { orderBy: { createdAt: "desc" } } },
+          });
+        });
+        break;
+      } catch (error) {
+        lastError = error;
+        const code =
+          typeof error === "object" && error !== null && "code" in error
+            ? String((error as { code?: unknown }).code)
+            : "";
+        if (code !== "P2002") {
+          throw error;
+        }
+      }
+    }
+
+    if (!updatedMember) {
+      throw lastError ?? new Error("Failed to generate unique card code");
+    }
+
+    return NextResponse.json(updatedMember);
+  } catch (error) {
+    console.error("Assign new card error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

@@ -14,8 +14,11 @@ export async function POST(
   const { cardCode } = await params;
 
   try {
-    const card = await prisma.card.findUnique({
-      where: { cardCode },
+    const card = await prisma.card.findFirst({
+      where: {
+        cardCode,
+        isActive: true,
+      },
       include: {
         member: {
           select: {
