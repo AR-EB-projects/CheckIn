@@ -53,20 +53,28 @@ self.addEventListener("notificationclick", (event) => {
     event.notification?.data && typeof event.notification.data.url === "string"
       ? event.notification.data.url
       : "/";
-  const destination = new URL(targetPath, self.location.origin).toString();
+  const destinationUrl = new URL(targetPath, self.location.origin);
+  destinationUrl.searchParams.set("source", "push");
+  destinationUrl.searchParams.set("openNotifications", "1");
+  const destination = destinationUrl.toString();
 
   event.waitUntil(
     self.clients
       .matchAll({ type: "window", includeUncontrolled: true })
       .then((clients) => {
-        const destinationUrl = new URL(destination);
+        const destinationPathUrl = new URL(destination);
         for (const client of clients) {
           const clientUrl = new URL(client.url);
           if (
             client.url === destination ||
             client.url.startsWith(`${destination}#`) ||
-            clientUrl.pathname === destinationUrl.pathname
+            clientUrl.pathname === destinationPathUrl.pathname
           ) {
+            if ("navigate" in client) {
+              return client.navigate(destination).then((navigatedClient) =>
+                navigatedClient ? navigatedClient.focus() : client.focus()
+              );
+            }
             return client.focus();
           }
         }
