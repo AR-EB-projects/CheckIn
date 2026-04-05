@@ -7,11 +7,11 @@ export async function GET(
   const { cardCode } = await params;
 
   return NextResponse.json({
-    id: "/app",
+    id: `/member/${cardCode}`,
     name: "Dalida Dance",
     short_name: "Dalida Dance",
     start_url: `/member/${cardCode}`,
-    scope: "/",
+    scope: "/member/",
     display: "standalone",
     background_color: "#000000",
     theme_color: "#000000",
