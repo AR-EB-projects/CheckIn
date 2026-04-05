@@ -16,6 +16,7 @@ export async function createAdminToken() {
   return await new SignJWT({ role: "ADMIN" })
       .setProtectedHeader({ alg: "HS256" })
       .setIssuedAt()
+      .setExpirationTime("365d")
       .sign(secret);
 }
 
