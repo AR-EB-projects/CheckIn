@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, use, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, use, useRef, useCallback } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { PushNotificationsPanel } from '@/components/push/PushNotificationsPanel'
 
 interface Member {
@@ -48,7 +48,10 @@ export default function MemberPage({ params }: { params: Promise<{ cardCode: str
   const [answerStatus, setAnswerStatus] = useState<Record<string, string>>({})
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
   const notificationsDropdownRef = useRef<HTMLDivElement | null>(null)
+  const hasHandledPushOpenRef = useRef(false)
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
 
   const refreshQuestions = async () => {
     try {
@@ -224,7 +227,7 @@ export default function MemberPage({ params }: { params: Promise<{ cardCode: str
     }).format(date)
   }
 
-  const markNotificationsAsRead = async () => {
+  const markNotificationsAsRead = useCallback(async () => {
     if (!member || !member.unread_notifications || member.unread_notifications <= 0) return
 
     try {
@@ -245,7 +248,29 @@ export default function MemberPage({ params }: { params: Promise<{ cardCode: str
     } catch (err) {
       console.error('Mark notifications read error:', err)
     }
-  }
+  }, [member, resolvedParams.cardCode])
+
+  useEffect(() => {
+    const shouldAutoOpenNotifications =
+      searchParams.get('openNotifications') === '1' && searchParams.get('source') === 'push'
+
+    if (!shouldAutoOpenNotifications || !member || isAdmin) {
+      hasHandledPushOpenRef.current = false
+      return
+    }
+
+    if (hasHandledPushOpenRef.current) return
+    hasHandledPushOpenRef.current = true
+
+    setIsNotificationsOpen(true)
+    void markNotificationsAsRead()
+
+    const nextParams = new URLSearchParams(searchParams.toString())
+    nextParams.delete('openNotifications')
+    nextParams.delete('source')
+    const nextQuery = nextParams.toString()
+    router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false })
+  }, [searchParams, member, isAdmin, pathname, router, markNotificationsAsRead])
 
   const handleAnswerChange = (questionId: string, value: string) => {
     setAnswers((prev) => ({ ...prev, [questionId]: value }))
