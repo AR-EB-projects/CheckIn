@@ -21,7 +21,7 @@ export async function middleware(request: NextRequest) {
           await jwtVerify(adminSession, SECRET);
           // If valid session, redirect away from login to admin dashboard
           return NextResponse.redirect(new URL("/admin/members", request.url));
-        } catch (e) {
+        } catch {
           // Invalid token, allow access to login
         }
       }
@@ -38,7 +38,7 @@ export async function middleware(request: NextRequest) {
     try {
       await jwtVerify(adminSession, SECRET);
       return NextResponse.next();
-    } catch (e) {
+    } catch {
       const response = pathname.startsWith("/api/")
         ? NextResponse.json({ error: "Unauthorized" }, { status: 401 })
         : NextResponse.redirect(new URL("/admin/login", request.url));
@@ -52,5 +52,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/api/admin/:path*"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)"],
 };
