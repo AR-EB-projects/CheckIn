@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 
 export default function AddQuestionPage() {
   const [question, setQuestion] = useState("");
-  const [targetMemberId, setTargetMemberId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
@@ -21,7 +20,6 @@ export default function AddQuestionPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           question,
-          targetMemberId,
           isActive: true
         }),
       });
