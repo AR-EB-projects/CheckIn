@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p \"C:/Users/Lenovo/IdeaProjects/CheckIn/checkin/src/app/api/admin/folders/[id]/copy\")",
+      "Bash(mkdir -p \"C:/Users/Lenovo/IdeaProjects/CheckIn/checkin/src/app/api/admin/folders/[id]/items/[itemId]/copy\")",
+      "Bash(mkdir -p \"C:/Users/Lenovo/IdeaProjects/CheckIn/checkin/src/app/api/admin/shares/[id]\")",
+      "Bash(mkdir -p \"C:/Users/Lenovo/IdeaProjects/CheckIn/checkin/src/app/api/public/share/[token]\")",
+      "Bash(mkdir -p \"C:/Users/Lenovo/IdeaProjects/CheckIn/checkin/src/app/api/public/stream/[token]/[videoId]\")",
+      "Bash(mkdir -p \"C:/Users/Lenovo/IdeaProjects/CheckIn/checkin/src/app/watch/[token]\")",
+      "Bash(npx next:*)",
+      "Bash(npm run:*)"
+    ]
+  }
+}
