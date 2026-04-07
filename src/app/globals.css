@@ -507,3 +507,128 @@ label {
   margin-bottom: 6px !important;
   display: block;
 }
+
+/* Watch Page (Public) */
+.watch-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px 16px;
+  min-height: 100vh;
+}
+
+.watch-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.watch-loading,
+.watch-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  text-align: center;
+}
+
+.watch-player {
+  margin-bottom: 24px;
+}
+
+.watch-player video {
+  border-radius: 10px;
+  background: #000;
+}
+
+.watch-video-title {
+  margin-top: 12px;
+  font-size: 1.2rem;
+  text-align: left;
+}
+
+.watch-list {
+  margin-top: 16px;
+}
+
+.watch-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--text-primary);
+  text-align: left;
+  font-size: 0.95rem;
+}
+
+.watch-list-item:hover {
+  border-color: var(--accent-gold-color);
+}
+
+.watch-list-item.active {
+  border-color: var(--accent-gold-color);
+  background: rgba(212, 175, 55, 0.08);
+}
+
+.watch-list-item-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-right: 12px;
+}
+
+/* Folder browser */
+.folder-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  font-size: 0.9rem;
+}
+
+.folder-breadcrumb-item {
+  color: var(--accent-gold-color);
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-size: inherit;
+  padding: 0;
+}
+
+.folder-breadcrumb-item:hover {
+  text-decoration: underline;
+}
+
+.folder-breadcrumb-sep {
+  color: var(--text-muted);
+}
+
+.folder-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.folder-card:hover {
+  border-color: var(--accent-gold-color);
+  transform: translateY(-1px);
+}
+
+@media (max-width: 768px) {
+  .watch-page {
+    padding: 16px 12px;
+  }
+}

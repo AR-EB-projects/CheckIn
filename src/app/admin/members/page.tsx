@@ -222,8 +222,8 @@ export default function AdminMembersPage() {
         </h1>
       </div>
 
-      <div className="flex justify-center gap-4 mb-8">
-        <button 
+      <div className="flex justify-center gap-4 mb-8" style={{ flexWrap: "wrap" }}>
+        <button
           onClick={() => router.push("/admin/members/add")}
           className="btn btn-primary"
         >
@@ -234,6 +234,12 @@ export default function AdminMembersPage() {
           className="btn btn-primary"
         >
           Изпрати известие
+        </button>
+        <button
+          onClick={() => router.push("/admin/media")}
+          className="btn btn-primary"
+        >
+          Медия библиотека
         </button>
         <button 
           onClick={() => router.push("/admin/questions/add")}
