@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import { prisma } from "@/lib/db";
 import { verifyAdminToken } from "@/lib/adminAuth";
-import { createAuditLog, getClientIp } from "@/lib/audit";
 import { SHARE_LINK_BASE_URL } from "@/lib/media/config";
 
 export const runtime = "nodejs";
@@ -93,14 +92,6 @@ export async function POST(request: NextRequest) {
     });
 
     const publicUrl = `${SHARE_LINK_BASE_URL}/${shareToken}`;
-
-    await createAuditLog(
-      "SHARE_CREATED",
-      "ShareLink",
-      shareLink.id,
-      { videoCount: mediaFileIds.length, expiresAt: expiresAt.toISOString() },
-      { ipAddress: getClientIp(request) ?? undefined }
-    );
 
     return NextResponse.json(
       {

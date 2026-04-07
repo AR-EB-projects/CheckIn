@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { verifyAdminToken } from "@/lib/adminAuth";
-import { createAuditLog, getClientIp } from "@/lib/audit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -66,18 +65,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         sortOrder: (lastItem?.sortOrder ?? -1) + 1,
       },
     });
-
-    await createAuditLog(
-      "FOLDER_ITEM_COPIED",
-      "FolderItem",
-      newItem.id,
-      {
-        sourceFolderId,
-        targetFolderId,
-        mediaFileId: sourceItem.mediaFileId,
-      },
-      { mediaFileId: sourceItem.mediaFileId, ipAddress: getClientIp(request) ?? undefined }
-    );
 
     return NextResponse.json(newItem, { status: 201 });
   } catch (error) {

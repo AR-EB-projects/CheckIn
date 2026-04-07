@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { verifyAdminToken } from "@/lib/adminAuth";
-import { createAuditLog, getClientIp } from "@/lib/audit";
 import { SHARE_LINK_BASE_URL } from "@/lib/media/config";
 
 export const runtime = "nodejs";
@@ -91,14 +90,6 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     // Cascade deletes ShareLinkItems. Physical files are NOT affected.
     await prisma.shareLink.delete({ where: { id } });
-
-    await createAuditLog(
-      "SHARE_REVOKED",
-      "ShareLink",
-      id,
-      { token: share.token.slice(0, 8) + "..." },
-      { ipAddress: getClientIp(request) ?? undefined }
-    );
 
     return NextResponse.json({ deleted: true });
   } catch (error) {
