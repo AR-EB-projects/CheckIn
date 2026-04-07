@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { prisma } from "@/lib/db";
 import { verifyAdminToken } from "@/lib/adminAuth";
-import { createAuditLog, getClientIp } from "@/lib/audit";
 import { ensureDirectories, hasEnoughDiskSpace } from "@/lib/media/storage";
 
 export const runtime = "nodejs";
@@ -89,14 +88,6 @@ export async function POST(request: NextRequest) {
         uploadId,
       },
     });
-
-    await createAuditLog(
-      "UPLOAD_STARTED",
-      "MediaFile",
-      mediaFile.id,
-      { originalName: fileName, fileSize, mimeType, totalChunks, folderId },
-      { mediaFileId: mediaFile.id, ipAddress: getClientIp(request) ?? undefined }
-    );
 
     return NextResponse.json(
       { uploadId, mediaFileId: mediaFile.id, totalChunks, folderId },

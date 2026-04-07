@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { verifyAdminToken } from "@/lib/adminAuth";
-import { createAuditLog, getClientIp } from "@/lib/audit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -66,14 +65,6 @@ export async function POST(request: NextRequest) {
     const folder = await prisma.folder.create({
       data: { name, parentId },
     });
-
-    await createAuditLog(
-      "FOLDER_CREATED",
-      "Folder",
-      folder.id,
-      { name, parentId },
-      { ipAddress: getClientIp(request) ?? undefined }
-    );
 
     return NextResponse.json(folder, { status: 201 });
   } catch (error) {

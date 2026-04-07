@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { verifyAdminToken } from "@/lib/adminAuth";
-import { createAuditLog, getClientIp } from "@/lib/audit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -114,14 +113,6 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       data: { name },
     });
 
-    await createAuditLog(
-      "FOLDER_RENAMED",
-      "Folder",
-      id,
-      { oldName: existing.name, newName: name },
-      { ipAddress: getClientIp(request) ?? undefined }
-    );
-
     return NextResponse.json(folder);
   } catch (error) {
     console.error("Update folder error:", error);
@@ -153,14 +144,6 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     // Prisma cascades handle deleting children folders and folder items.
     // Physical files are NOT deleted — MediaFile records remain as the anchor.
     await prisma.folder.delete({ where: { id } });
-
-    await createAuditLog(
-      "FOLDER_DELETED",
-      "Folder",
-      id,
-      { name: folder.name },
-      { ipAddress: getClientIp(request) ?? undefined }
-    );
 
     return NextResponse.json({ deleted: true });
   } catch (error) {

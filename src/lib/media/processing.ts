@@ -1,7 +1,6 @@
 import { spawn, execFile, ChildProcess } from "child_process";
 import { promisify } from "util";
 import { prisma } from "@/lib/db";
-import { createAuditLog } from "@/lib/audit";
 import { FFMPEG_PATH, FFPROBE_PATH, BROWSER_VIDEO_CODECS, BROWSER_AUDIO_CODECS, DIRECT_SERVE_CONTAINERS } from "./config";
 import { getFilePath, deleteFile } from "./storage";
 import fs from "fs/promises";
@@ -173,11 +172,6 @@ async function processNext(): Promise<void> {
       },
     });
 
-    await createAuditLog("UPLOAD_COMPLETED", "MediaFile", item.mediaFileId, {
-      decision: item.decision,
-      outputFileName,
-    }, { mediaFileId: item.mediaFileId });
-
   } catch (error) {
     console.error(`FFmpeg processing failed for ${item.mediaFileId}:`, error);
 
@@ -198,9 +192,6 @@ async function processNext(): Promise<void> {
       },
     });
 
-    await createAuditLog("UPLOAD_FAILED", "MediaFile", item.mediaFileId, {
-      error: error instanceof Error ? error.message.slice(0, 200) : "unknown",
-    }, { mediaFileId: item.mediaFileId });
   } finally {
     activeProcess = null;
     activeMediaFileId = null;

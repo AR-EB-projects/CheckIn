@@ -58,7 +58,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     });
 
     await createAuditLog(
-      "SHARE_ACCESSED",
+      "SHARE_LINK_OPENED",
       "ShareLink",
       share.id,
       { token: token.slice(0, 8) + "..." },

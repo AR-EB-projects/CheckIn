@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { verifyAdminToken } from "@/lib/adminAuth";
-import { createAuditLog, getClientIp } from "@/lib/audit";
 import {
   assembleChunks,
   getReceivedChunks,
@@ -119,13 +118,6 @@ export async function POST(request: NextRequest) {
           uploadId: null,
         },
       });
-      await createAuditLog(
-        "UPLOAD_FAILED",
-        "MediaFile",
-        mediaFile.id,
-        { reason: "probe_failed" },
-        { mediaFileId: mediaFile.id, ipAddress: getClientIp(request) ?? undefined }
-      );
       return NextResponse.json(
         { mediaFileId: mediaFile.id, status: "FAILED", error: "Неподдържан видео формат" },
         { status: 422 }
@@ -145,13 +137,6 @@ export async function POST(request: NextRequest) {
           durationSecs: probe.durationSecs,
         },
       });
-      await createAuditLog(
-        "UPLOAD_FAILED",
-        "MediaFile",
-        mediaFile.id,
-        { reason: "unsupported", probe },
-        { mediaFileId: mediaFile.id, ipAddress: getClientIp(request) ?? undefined }
-      );
       return NextResponse.json(
         { mediaFileId: mediaFile.id, status: "FAILED", error: "Неподдържан видео формат" },
         { status: 422 }
@@ -173,13 +158,6 @@ export async function POST(request: NextRequest) {
         folderItemId = await assignToFolder(mediaFile.id, folderId);
       }
 
-      await createAuditLog(
-        "UPLOAD_COMPLETED",
-        "MediaFile",
-        mediaFile.id,
-        { decision: "ready", probe, folderId },
-        { mediaFileId: mediaFile.id, ipAddress: getClientIp(request) ?? undefined }
-      );
       return NextResponse.json({
         mediaFileId: mediaFile.id,
         status: "READY",

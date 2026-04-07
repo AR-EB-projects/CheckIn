@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { verifyAdminToken } from "@/lib/adminAuth";
-import { createAuditLog, getClientIp } from "@/lib/audit";
 import { deleteFile, deleteChunkDir } from "@/lib/media/storage";
 import { killProcessingFor } from "@/lib/media/processing";
 
@@ -101,14 +100,6 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       data,
     });
 
-    await createAuditLog(
-      "FILE_UPDATED",
-      "MediaFile",
-      id,
-      changes,
-      { mediaFileId: id, ipAddress: getClientIp(request) ?? undefined }
-    );
-
     return NextResponse.json({
       ...updated,
       sizeBytes: Number(updated.sizeBytes),
@@ -166,18 +157,6 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     // Cascade deletes FolderItems and ShareLinkItems via Prisma relations
     await prisma.mediaFile.delete({ where: { id } });
-
-    await createAuditLog(
-      "FILE_DELETED",
-      "MediaFile",
-      id,
-      {
-        originalName: file.originalName,
-        displayName: file.displayName,
-        status: file.status,
-      },
-      { ipAddress: getClientIp(request) ?? undefined }
-    );
 
     return NextResponse.json({ deleted: true });
   } catch (error) {

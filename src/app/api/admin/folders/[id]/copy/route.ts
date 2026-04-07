@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { verifyAdminToken } from "@/lib/adminAuth";
-import { createAuditLog, getClientIp } from "@/lib/audit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -73,14 +72,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const newRoot = await prisma.$transaction(async (tx) => {
       return await copyFolderRecursive(tx, source, targetParentId);
     });
-
-    await createAuditLog(
-      "FOLDER_COPIED",
-      "Folder",
-      newRoot.id,
-      { sourceFolderId: id, newFolderId: newRoot.id },
-      { ipAddress: getClientIp(request) ?? undefined }
-    );
 
     return NextResponse.json(newRoot, { status: 201 });
   } catch (error) {

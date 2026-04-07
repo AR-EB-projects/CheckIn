@@ -81,10 +81,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     // Log stream access (fire and forget)
     createAuditLog(
-      "SHARE_STREAM",
-      "ShareLink",
-      share.id,
-      { mediaFileId: videoId, token: token.slice(0, 8) + "..." },
+      "SHARE_VIDEO_WATCHED",
+      "MediaFile",
+      videoId,
+      { shareLinkId: share.id, token: token.slice(0, 8) + "..." },
       { mediaFileId: videoId, ipAddress: getClientIp(request) ?? undefined }
     );
 
