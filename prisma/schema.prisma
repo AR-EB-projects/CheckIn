@@ -105,7 +105,7 @@ model MediaFile {
   mimeType     String
   sizeBytes    BigInt
   status       MediaFileStatus @default(UPLOADING)
-  isVisible    Boolean         @default(false)
+  isVisible    Boolean         @default(true)
   durationSecs Int?
   uploadId     String?         @unique
   errorMessage String?

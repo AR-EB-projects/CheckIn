@@ -85,6 +85,7 @@ export async function POST(request: NextRequest) {
         mimeType,
         sizeBytes: BigInt(Math.round(fileSize)),
         status: "UPLOADING",
+        isVisible: true,
         uploadId,
       },
     });
