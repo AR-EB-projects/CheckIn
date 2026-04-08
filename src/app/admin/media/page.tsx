@@ -15,6 +15,7 @@ export default function MediaLibraryPage() {
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [deletingFolder, setDeletingFolder] = useState<Folder | null>(null);
+  const [isAdminRole, setIsAdminRole] = useState(false);
   const router = useRouter();
 
   const fetchFolders = useCallback(async () => {
@@ -39,6 +40,27 @@ export default function MediaLibraryPage() {
         const data = await res.json();
         if (!cancelled) {
           setFolders(data.folders);
+        }
+      } catch {
+        // Ignore
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const res = await fetch("/api/admin/check-session", { cache: "no-store" });
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        if (!cancelled) {
+          setIsAdminRole(data.role === "ADMIN");
         }
       } catch {
         // Ignore
@@ -98,12 +120,12 @@ export default function MediaLibraryPage() {
         <button onClick={() => router.push("/admin/media/shares")} className="btn btn-primary">
           Споделени линкове
         </button>
-        <button onClick={() => router.push("/admin/audit")} className="btn btn-secondary">
+        {isAdminRole && (<button onClick={() => router.push("/admin/audit")} className="btn btn-secondary">
           Одитен дневник
-        </button>
-        <button onClick={() => router.push("/admin/members")} className="btn btn-secondary">
+        </button>)}
+        {isAdminRole && (<button onClick={() => router.push("/admin/members")} className="btn btn-secondary">
           Назад
-        </button>
+        </button>)}
       </div>
 
       <div className="mb-8">
