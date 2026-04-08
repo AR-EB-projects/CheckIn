@@ -16,6 +16,9 @@ export default function MediaLibraryPage() {
   const [newFolderName, setNewFolderName] = useState("");
   const [deletingFolder, setDeletingFolder] = useState<Folder | null>(null);
   const [isAdminRole, setIsAdminRole] = useState(false);
+  const [memberReturnCardCode] = useState<string | null>(() =>
+    typeof window !== "undefined" ? sessionStorage.getItem("admin_return_member_card_code") : null
+  );
   const router = useRouter();
 
   const fetchFolders = useCallback(async () => {
@@ -108,6 +111,14 @@ export default function MediaLibraryPage() {
     }
   };
 
+  const handleBack = () => {
+    if (isAdminRole || !memberReturnCardCode) {
+      router.push("/admin/members");
+      return;
+    }
+    router.push(`/member/${memberReturnCardCode}`);
+  };
+
   return (
     <div className="container p-6 fade-in">
       <div className="flex-col flex items-center text-center mb-8">
@@ -123,7 +134,7 @@ export default function MediaLibraryPage() {
         {isAdminRole && (<button onClick={() => router.push("/admin/audit")} className="btn btn-secondary">
           Одитен дневник
         </button>)}
-        {isAdminRole && (<button onClick={() => router.push("/admin/members")} className="btn btn-secondary">
+        {(isAdminRole || memberReturnCardCode) && (<button onClick={handleBack} className="btn btn-secondary">
           Назад
         </button>)}
       </div>
