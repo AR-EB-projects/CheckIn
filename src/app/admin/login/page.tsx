@@ -1,13 +1,32 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function AdminLoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="container flex items-center justify-center fade-in" style={{ minHeight: "100vh" }}>
+          <div className="member-card" style={{ maxWidth: "420px", width: "100%" }}>
+            <div className="text-center mb-8">
+              <div className="loading mx-auto" />
+            </div>
+          </div>
+        </div>
+      }
+    >
+      <AdminLoginPageInner />
+    </Suspense>
+  );
+}
+
+function AdminLoginPageInner() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,7 +44,18 @@ export default function AdminLoginPage() {
 
       if (response.ok) {
         const data = await response.json();
-        router.push(data.role === "MEDIA_MANAGER" ? "/admin/media" : "/admin/members");
+        const memberCardCode = searchParams.get("memberCardCode")?.trim() || "";
+        if (data.role === "MEDIA_MANAGER") {
+          if (memberCardCode) {
+            sessionStorage.setItem("admin_return_member_card_code", memberCardCode);
+          } else {
+            sessionStorage.removeItem("admin_return_member_card_code");
+          }
+          router.push("/admin/media");
+        } else {
+          sessionStorage.removeItem("admin_return_member_card_code");
+          router.push("/admin/members");
+        }
       } else {
         const data = await response.json();
         setError(data.error || "Login failed");

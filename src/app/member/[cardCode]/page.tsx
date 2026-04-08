@@ -108,9 +108,10 @@ export default function MemberPage({ params }: { params: Promise<{ cardCode: str
       try {
         const sessionRes = await fetch('/api/admin/check-session')
         const sessionData = await sessionRes.json()
-        setIsAdmin(sessionData.isAdmin)
+        const isAdminRole = sessionData.role === 'ADMIN'
+        setIsAdmin(isAdminRole)
 
-        if (!sessionData.isAdmin) {
+        if (!isAdminRole) {
           const answersRes = await fetch(`/api/members/${resolvedParams.cardCode}/answers`, { cache: 'no-store' })
           await refreshQuestions()
 
@@ -375,6 +376,10 @@ export default function MemberPage({ params }: { params: Promise<{ cardCode: str
     router.push('/admin/members')
   }
 
+  const handleGoToLogin = () => {
+    router.push(`/admin/login?memberCardCode=${encodeURIComponent(resolvedParams.cardCode)}`)
+  }
+
   if (loading) {
     return (
       <div className="container flex items-center justify-center" style={{ minHeight: '100vh' }}>
@@ -398,6 +403,18 @@ export default function MemberPage({ params }: { params: Promise<{ cardCode: str
 
   return (
     <div className="container flex flex-col items-center justify-center fade-in" style={{ minHeight: '100vh' }}>
+      {!isAdmin && (
+        <div className="flex justify-center mb-4" style={{ maxWidth: '420px', width: '100%' }}>
+          <button
+            onClick={handleGoToLogin}
+            className="btn btn-secondary px-6"
+            style={{ cursor: 'pointer' }}
+          >
+            Админ вход
+          </button>
+        </div>
+      )}
+
       {isAdmin && member && (
         <div className="flex justify-center mb-4" style={{ maxWidth: '420px', width: '100%' }}>
           <button

@@ -39,6 +39,9 @@ export default function SharesPage() {
   const [creating, setCreating] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [deletingShare, setDeletingShare] = useState<ShareLink | null>(null);
+  const [memberReturnCardCode] = useState<string | null>(() =>
+    typeof window !== "undefined" ? sessionStorage.getItem("admin_return_member_card_code") : null
+  );
 
   // Folder browser state
   const [browserChildren, setBrowserChildren] = useState<BrowserFolder[]>([]);
@@ -168,6 +171,14 @@ export default function SharesPage() {
     }
   };
 
+  const handleBack = () => {
+    if (memberReturnCardCode) {
+      router.push(`/member/${memberReturnCardCode}`);
+      return;
+    }
+    router.push("/admin/media");
+  };
+
   const readyItems = browserItems.filter((item) => item.mediaFile.status === "READY");
   const hasContent = browserChildren.length > 0 || readyItems.length > 0;
 
@@ -183,7 +194,7 @@ export default function SharesPage() {
         <button className="btn btn-primary" onClick={openCreate}>
           Създай линк за споделяне
         </button>
-        <button onClick={() => router.push("/admin/media")} className="btn btn-secondary">
+        <button onClick={handleBack} className="btn btn-secondary">
           Назад
         </button>
       </div>
