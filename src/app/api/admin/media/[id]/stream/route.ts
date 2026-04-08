@@ -7,6 +7,28 @@ import { getFilePath } from "@/lib/media/storage";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
+interface CachedMedia {
+  diskFileName: string;
+  mimeType: string;
+  status: string;
+}
+
+const mediaCache = new Map<string, { data: CachedMedia; expiresAt: number }>();
+
+async function getMediaFile(id: string): Promise<CachedMedia | null> {
+  const cached = mediaCache.get(id);
+  if (cached && cached.expiresAt > Date.now()) return cached.data;
+
+  const data = await prisma.mediaFile.findUnique({
+    where: { id },
+    select: { diskFileName: true, mimeType: true, status: true },
+  });
+  if (data) mediaCache.set(id, { data, expiresAt: Date.now() + CACHE_TTL_MS });
+  return data;
+}
+
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
@@ -20,15 +42,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   const { id } = await params;
 
   try {
-    const mediaFile = await prisma.mediaFile.findUnique({
-      where: { id },
-      select: {
-        diskFileName: true,
-        mimeType: true,
-        status: true,
-        sizeBytes: true,
-      },
-    });
+    const mediaFile = await getMediaFile(id);
 
     if (!mediaFile || mediaFile.status !== "READY") {
       return NextResponse.json({ error: "Видеото не е налично" }, { status: 404 });
