@@ -378,8 +378,20 @@ export default function FolderDetailPage() {
               <div key={item.id} className="card" style={{ padding: "16px" }}>
                 <div className="flex justify-between items-center" style={{ flexWrap: "wrap", gap: "8px" }}>
                   <div style={{ flex: 1, minWidth: "200px" }}>
-                    <div className="flex items-center gap-3">
-                      <strong style={{ fontSize: "1rem" }}>{item.displayName || item.mediaFile.displayName}</strong>
+                    <div className="flex items-center gap-3" style={{ minWidth: 0 }}>
+                      <strong
+                        title={item.displayName || item.mediaFile.displayName}
+                        style={{
+                          fontSize: "1rem",
+                          minWidth: 0,
+                          flex: 1,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {item.displayName || item.mediaFile.displayName}
+                      </strong>
                       <span
                         className="badge"
                         style={{
