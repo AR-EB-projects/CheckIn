@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { verifyAdminToken } from "@/lib/adminAuth";
 import { deleteFile, deleteChunkDir } from "@/lib/media/storage";
 import { killProcessingFor } from "@/lib/media/processing";
+import { deleteCloudinaryAsset } from "@/lib/media/cloudinary";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -131,6 +132,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         originalName: true,
         displayName: true,
         uploadId: true,
+        cloudinaryPublicId: true,
       },
     });
 
@@ -138,22 +140,31 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Файлът не е намерен" }, { status: 404 });
     }
 
-    // Handle state-specific cleanup
-    if (file.status === "UPLOADING" && file.uploadId) {
-      await deleteChunkDir(file.uploadId);
-    }
-
-    if (file.status === "PROCESSING") {
-      killProcessingFor(file.id);
-      // Delete potential partial output
-      const outputName = `${file.id}.mp4`;
-      if (outputName !== file.diskFileName) {
-        await deleteFile(outputName);
+    if (file.cloudinaryPublicId) {
+      // Cloudinary-hosted image — delete from Cloudinary, no local file to clean up
+      try {
+        await deleteCloudinaryAsset(file.cloudinaryPublicId);
+      } catch (err) {
+        console.error("Cloudinary delete failed:", err);
       }
-    }
+    } else {
+      // Local file — handle state-specific cleanup
+      if (file.status === "UPLOADING" && file.uploadId) {
+        await deleteChunkDir(file.uploadId);
+      }
 
-    // Delete physical file
-    await deleteFile(file.diskFileName);
+      if (file.status === "PROCESSING") {
+        killProcessingFor(file.id);
+        // Delete potential partial output
+        const outputName = `${file.id}.mp4`;
+        if (outputName !== file.diskFileName) {
+          await deleteFile(outputName);
+        }
+      }
+
+      // Delete physical file
+      await deleteFile(file.diskFileName);
+    }
 
     // Cascade deletes FolderItems and ShareLinkItems via Prisma relations
     await prisma.mediaFile.delete({ where: { id } });

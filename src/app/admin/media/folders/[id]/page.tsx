@@ -35,6 +35,7 @@ interface FolderItemEntry {
     references: number;
     durationSecs: number | null;
     createdAt: string;
+    cloudinaryUrl: string | null;
   };
 }
 
@@ -67,6 +68,7 @@ export default function FolderDetailPage() {
   const [deletingChild, setDeletingChild] = useState<ChildFolder | null>(null);
   const [deletingCurrentFolder, setDeletingCurrentFolder] = useState(false);
   const [playingItem, setPlayingItem] = useState<FolderItemEntry | null>(null);
+  const [viewingImage, setViewingImage] = useState<FolderItemEntry | null>(null);
 
   const fetchFolder = useCallback(async () => {
     setLoading(true);
@@ -222,10 +224,25 @@ export default function FolderDetailPage() {
     } catch {}
   };
 
-  const getMediaIcon = (mimeType: string) => {
+  const getMediaIcon = (item: FolderItemEntry) => {
+    const { mimeType, cloudinaryUrl } = item.mediaFile;
     if (mimeType.startsWith("video/")) return "▶";
     if (mimeType.startsWith("audio/")) return "♪";
-    if (mimeType.startsWith("image/")) return "◼";
+    if (mimeType.startsWith("image/") && cloudinaryUrl) {
+      return (
+        <img
+          src={cloudinaryUrl}
+          alt=""
+          style={{
+            width: "36px",
+            height: "36px",
+            objectFit: "cover",
+            borderRadius: "6px",
+            display: "block",
+          }}
+        />
+      );
+    }
     return "◻";
   };
 
@@ -363,7 +380,7 @@ export default function FolderDetailPage() {
                   <div key={item.id} className="fd-media-item">
                     <div className="fd-media-row">
                       <div className="fd-media-icon">
-                        {getMediaIcon(item.mediaFile.mimeType)}
+                        {getMediaIcon(item)}
                       </div>
                       <div className="fd-media-body">
                         <div className="fd-media-name-row">
@@ -386,12 +403,20 @@ export default function FolderDetailPage() {
                         </div>
                       </div>
                       <div className="fd-media-actions">
-                        {item.mediaFile.status === "READY" && (
+                        {item.mediaFile.status === "READY" && !item.mediaFile.mimeType.startsWith("image/") && (
                           <button
                             className="fd-btn fd-btn-primary fd-btn-sm"
                             onClick={() => setPlayingItem(item)}
                           >
                             ▶ Пусни
+                          </button>
+                        )}
+                        {item.mediaFile.status === "READY" && item.mediaFile.mimeType.startsWith("image/") && item.mediaFile.cloudinaryUrl && (
+                          <button
+                            className="fd-btn fd-btn-secondary fd-btn-sm"
+                            onClick={() => setViewingImage(item)}
+                          >
+                            🔍 Преглед
                           </button>
                         )}
                         {item.mediaFile.status === "READY" && (
@@ -583,6 +608,37 @@ export default function FolderDetailPage() {
                 <button className="fd-btn fd-btn-danger" onClick={handleDeleteChild}>Изтрий</button>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: View image */}
+      {viewingImage && (
+        <div className="fd-overlay" onClick={() => setViewingImage(null)}>
+          <div
+            className="fd-modal fd-modal-video"
+            style={{ padding: "20px" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="fd-video-header">
+              <span className="fd-video-title">
+                {viewingImage.displayName || viewingImage.mediaFile.displayName}
+              </span>
+              <button className="fd-btn fd-btn-ghost fd-btn-sm" onClick={() => setViewingImage(null)}>
+                ✕ Затвори
+              </button>
+            </div>
+            <img
+              src={viewingImage.mediaFile.cloudinaryUrl!}
+              alt={viewingImage.mediaFile.displayName}
+              style={{
+                width: "100%",
+                borderRadius: "8px",
+                display: "block",
+                maxHeight: "calc(90vh - 80px)",
+                objectFit: "contain",
+              }}
+            />
           </div>
         </div>
       )}
