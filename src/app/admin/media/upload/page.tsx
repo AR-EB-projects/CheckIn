@@ -11,6 +11,7 @@ interface UploadItem {
   progress: number;
   status: "pending" | "uploading" | "finalizing" | "done" | "error";
   error: string | null;
+  previewUrl: string | null;
 }
 
 export default function UploadPage() {
@@ -64,6 +65,16 @@ function UploadPageInner() {
     })();
   }, [folderId, router]);
 
+  // Revoke preview URLs when component unmounts
+  useEffect(() => {
+    return () => {
+      uploads.forEach((u) => {
+        if (u.previewUrl) URL.revokeObjectURL(u.previewUrl);
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const updateUpload = (index: number, update: Partial<UploadItem>) => {
     setUploads((prev) => prev.map((u, i) => (i === index ? { ...u, ...update } : u)));
   };
@@ -71,7 +82,12 @@ function UploadPageInner() {
   const addFiles = useCallback(
     (fileList: FileList | File[]) => {
       const newUploads: UploadItem[] = Array.from(fileList)
-        .filter((f) => f.type.startsWith("video/") || f.type.startsWith("audio/"))
+        .filter(
+          (f) =>
+            f.type.startsWith("video/") ||
+            f.type.startsWith("audio/") ||
+            f.type.startsWith("image/")
+        )
         .map((file) => ({
           file,
           uploadId: null,
@@ -79,19 +95,20 @@ function UploadPageInner() {
           progress: 0,
           status: "pending" as const,
           error: null,
+          previewUrl: file.type.startsWith("image/") ? URL.createObjectURL(file) : null,
         }));
 
       if (newUploads.length === 0) return;
 
       setUploads((prev) => {
         const updated = [...prev, ...newUploads];
-        // Start processing if not already running
         if (!uploadingRef.current) {
           processQueue(updated, prev.length);
         }
         return updated;
       });
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -103,13 +120,45 @@ function UploadPageInner() {
       if (item.status !== "pending") continue;
 
       try {
-        await uploadFile(i, item.file);
+        if (item.file.type.startsWith("image/")) {
+          await uploadImage(i, item.file);
+        } else {
+          await uploadFile(i, item.file);
+        }
       } catch {
-        // Error already handled in uploadFile
+        // Error already handled in uploadFile / uploadImage
       }
     }
 
     uploadingRef.current = false;
+  };
+
+  const uploadImage = async (index: number, file: File) => {
+    updateUpload(index, { status: "uploading", progress: 50 });
+
+    const fd = new FormData();
+    fd.append("file", file);
+    if (folderId) fd.append("folderId", folderId);
+
+    try {
+      const res = await fetch("/api/admin/media/upload-image", {
+        method: "POST",
+        body: fd,
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Грешка при качване на изображение");
+      }
+
+      updateUpload(index, { status: "done", progress: 100 });
+    } catch (err) {
+      updateUpload(index, {
+        status: "error",
+        error: err instanceof Error ? err.message : "Грешка при качване",
+      });
+      throw err;
+    }
   };
 
   const uploadFile = async (index: number, file: File) => {
@@ -316,12 +365,12 @@ function UploadPageInner() {
           Плъзнете файлове тук или натиснете за избор
         </p>
         <p className="text-muted" style={{ fontSize: "0.85rem" }}>
-          Приемат се всички видео и аудио формати
+          Приемат се видео, аудио и изображения
         </p>
         <input
           ref={fileInputRef}
           type="file"
-          accept="video/*,audio/*"
+          accept="video/*,audio/*,image/*"
           multiple
           onChange={handleFileSelect}
           style={{ display: "none" }}
@@ -343,6 +392,19 @@ function UploadPageInner() {
         {uploads.map((upload, index) => (
           <div key={index} className="card" style={{ padding: "12px 16px" }}>
             <div className="flex justify-between items-center" style={{ gap: "12px" }}>
+              {upload.previewUrl && (
+                <img
+                  src={upload.previewUrl}
+                  alt=""
+                  style={{
+                    width: "48px",
+                    height: "48px",
+                    objectFit: "cover",
+                    borderRadius: "6px",
+                    flexShrink: 0,
+                  }}
+                />
+              )}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div
                   style={{

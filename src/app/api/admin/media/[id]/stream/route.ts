@@ -13,6 +13,7 @@ interface CachedMedia {
   diskFileName: string;
   mimeType: string;
   status: string;
+  cloudinaryUrl: string | null;
 }
 
 const mediaCache = new Map<string, { data: CachedMedia; expiresAt: number }>();
@@ -23,7 +24,7 @@ async function getMediaFile(id: string): Promise<CachedMedia | null> {
 
   const data = await prisma.mediaFile.findUnique({
     where: { id },
-    select: { diskFileName: true, mimeType: true, status: true },
+    select: { diskFileName: true, mimeType: true, status: true, cloudinaryUrl: true },
   });
   if (data) mediaCache.set(id, { data, expiresAt: Date.now() + CACHE_TTL_MS });
   return data;
@@ -46,6 +47,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     if (!mediaFile || mediaFile.status !== "READY") {
       return NextResponse.json({ error: "Видеото не е налично" }, { status: 404 });
+    }
+
+    if (mediaFile.cloudinaryUrl) {
+      return NextResponse.redirect(mediaFile.cloudinaryUrl, {
+        status: 302,
+        headers: { "Cache-Control": "private, max-age=3600" },
+      });
     }
 
     const filePath = getFilePath(mediaFile.diskFileName);

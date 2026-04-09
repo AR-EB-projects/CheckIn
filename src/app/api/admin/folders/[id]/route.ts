@@ -41,6 +41,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
                 isVisible: true,
                 durationSecs: true,
                 createdAt: true,
+                cloudinaryUrl: true,
                 _count: {
                   select: { folderItems: true },
                 },

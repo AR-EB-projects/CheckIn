@@ -108,8 +108,10 @@ model MediaFile {
   isVisible    Boolean         @default(true)
   durationSecs Int?
   uploadId     String?         @unique
-  errorMessage String?
-  createdAt    DateTime        @default(now())
+  errorMessage       String?
+  cloudinaryPublicId String?
+  cloudinaryUrl      String?
+  createdAt          DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
 
   folderItems FolderItem[]
