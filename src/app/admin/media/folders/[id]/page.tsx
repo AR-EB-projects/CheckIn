@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import "./page.css";
 
@@ -39,10 +39,19 @@ interface FolderItemEntry {
   };
 }
 
-interface MediaFile {
+interface BrowserFolder {
   id: string;
-  displayName: string;
-  status: string;
+  name: string;
+  _count: { children: number; items: number };
+}
+
+interface BrowserItem {
+  id: string;
+  mediaFile: {
+    id: string;
+    displayName: string;
+    status: string;
+  };
 }
 
 
@@ -58,14 +67,11 @@ export default function FolderDetailPage() {
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [showAddVideo, setShowAddVideo] = useState(false);
-  const [allFiles, setAllFiles] = useState<MediaFile[]>([]);
   const [selectedFileId, setSelectedFileId] = useState("");
-  const [addMediaSearch, setAddMediaSearch] = useState("");
-  const [loadingAddMedia, setLoadingAddMedia] = useState(false);
-  const [loadingMoreAddMedia, setLoadingMoreAddMedia] = useState(false);
-  const [addMediaPage, setAddMediaPage] = useState(1);
-  const [addMediaHasMore, setAddMediaHasMore] = useState(false);
-  const [addMediaTotal, setAddMediaTotal] = useState(0);
+  const [browserChildren, setBrowserChildren] = useState<BrowserFolder[]>([]);
+  const [browserItems, setBrowserItems] = useState<BrowserItem[]>([]);
+  const [browserLoading, setBrowserLoading] = useState(false);
+  const [browserBreadcrumb, setBrowserBreadcrumb] = useState<{ id: string | null; name: string }[]>([]);
   const [showRename, setShowRename] = useState(false);
   const [renameName, setRenameName] = useState("");
   const [editingMedia, setEditingMedia] = useState<FolderItemEntry | null>(null);
@@ -77,7 +83,6 @@ export default function FolderDetailPage() {
   const [viewingImage, setViewingImage] = useState<FolderItemEntry | null>(null);
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   const [bulkDownloading, setBulkDownloading] = useState(false);
-  const addMediaRequestIdRef = useRef(0);
 
   const fetchFolder = useCallback(async () => {
     setLoading(true);
@@ -238,96 +243,60 @@ export default function FolderDetailPage() {
     finally { setDeletingCurrentFolder(false); }
   };
 
-  const fetchAddableMedia = useCallback(async (search: string, page: number, append: boolean) => {
-    if (append) setLoadingMoreAddMedia(true);
-    else setLoadingAddMedia(true);
-
-    const requestId = ++addMediaRequestIdRef.current;
-    const pageSize = 50;
-
+  const navigateBrowserFolder = useCallback(async (folderId: string | null) => {
+    setBrowserLoading(true);
     try {
-      const params = new URLSearchParams({
-        page: String(page),
-        limit: String(pageSize),
-        status: "READY",
-        excludeFolderId: id,
-      });
-      const trimmed = search.trim();
-      if (trimmed) {
-        params.set("search", trimmed);
-      }
-
-      const res = await fetch(`/api/admin/media?${params.toString()}`);
-      if (!res.ok) {
-        if (requestId !== addMediaRequestIdRef.current) return;
-        if (!append) {
-          setAllFiles([]);
-          setAddMediaTotal(0);
-          setAddMediaHasMore(false);
-        }
+      if (folderId === null) {
+        const res = await fetch("/api/admin/folders");
+        if (!res.ok) return;
+        const data = await res.json();
+        setBrowserChildren(data.folders ?? []);
+        setBrowserItems([]);
         return;
       }
 
+      const res = await fetch(`/api/admin/folders/${folderId}`);
+      if (!res.ok) return;
       const data = await res.json();
-      if (requestId !== addMediaRequestIdRef.current) return;
-
-      const batch = Array.isArray(data.files) ? (data.files as MediaFile[]) : [];
-      const total = typeof data.total === "number" ? data.total : batch.length;
-
-      setAllFiles((prev) => (append ? [...prev, ...batch] : batch));
-      setAddMediaTotal(total);
-      setAddMediaPage(page);
-      setAddMediaHasMore(page * pageSize < total);
+      setBrowserChildren(data.children ?? []);
+      setBrowserItems(data.items ?? []);
     } catch {
-      if (requestId !== addMediaRequestIdRef.current) return;
-      if (!append) {
-        setAllFiles([]);
-        setAddMediaTotal(0);
-        setAddMediaHasMore(false);
-      }
+      setBrowserChildren([]);
+      setBrowserItems([]);
     } finally {
-      if (requestId !== addMediaRequestIdRef.current) return;
-      if (append) setLoadingMoreAddMedia(false);
-      else setLoadingAddMedia(false);
+      setBrowserLoading(false);
     }
-  }, [id]);
+  }, []);
 
   const openAddVideo = () => {
     setShowAddVideo(true);
     setSelectedFileId("");
-    setAddMediaSearch("");
-    setAllFiles([]);
-    setAddMediaPage(1);
-    setAddMediaHasMore(false);
-    setAddMediaTotal(0);
-    setLoadingAddMedia(false);
-    setLoadingMoreAddMedia(false);
-    addMediaRequestIdRef.current += 1;
+    setBrowserChildren([]);
+    setBrowserItems([]);
+    setBrowserBreadcrumb([{ id: null, name: "Библиотека" }]);
+    void navigateBrowserFolder(null);
   };
 
-  const handleLoadMoreAddMedia = () => {
-    if (!showAddVideo || loadingAddMedia || loadingMoreAddMedia || !addMediaHasMore) return;
-    void fetchAddableMedia(addMediaSearch, addMediaPage + 1, true);
+  const enterBrowserFolder = (child: BrowserFolder) => {
+    setBrowserBreadcrumb((prev) => [...prev, { id: child.id, name: child.name }]);
+    void navigateBrowserFolder(child.id);
   };
 
-  useEffect(() => {
-    if (!showAddVideo) return;
-    const timer = window.setTimeout(() => {
-      void fetchAddableMedia(addMediaSearch, 1, false);
-    }, 250);
-    return () => window.clearTimeout(timer);
-  }, [showAddVideo, addMediaSearch, fetchAddableMedia]);
+  const navigateToBrowserCrumb = (entry: { id: string | null; name: string }, index: number) => {
+    setBrowserBreadcrumb((prev) => prev.slice(0, index + 1));
+    void navigateBrowserFolder(entry.id);
+  };
+
+  const currentFolderMediaIds = new Set(items.map((item) => item.mediaFile.id));
+  const addableReadyItems = browserItems.filter(
+    (entry) => entry.mediaFile.status === "READY" && !currentFolderMediaIds.has(entry.mediaFile.id)
+  );
 
   useEffect(() => {
-    if (showAddVideo) return;
-    addMediaRequestIdRef.current += 1;
-    setLoadingAddMedia(false);
-    setLoadingMoreAddMedia(false);
-  }, [showAddVideo]);
-
-  useEffect(() => {
-    setSelectedFileId((prev) => (allFiles.some((f) => f.id === prev) ? prev : ""));
-  }, [allFiles]);
+    if (!selectedFileId) return;
+    const selectedStillVisible = addableReadyItems.some((entry) => entry.mediaFile.id === selectedFileId);
+    if (!selectedStillVisible) setSelectedFileId("");
+  }, [addableReadyItems, selectedFileId]);
 
   const readyItems = items.filter((item) => item.mediaFile.status === "READY");
   const selectedReadyItems = readyItems.filter((item) => selectedItemIds.has(item.id));
@@ -671,51 +640,99 @@ export default function FolderDetailPage() {
         <div className="fd-overlay" onClick={() => setShowAddVideo(false)}>
           <div className="fd-modal fd-modal-wide" onClick={(e) => e.stopPropagation()}>
             <h3 className="fd-modal-title">Добави медия</h3>
-            <input
-              type="text"
-              className="fd-input"
-              value={addMediaSearch}
-              onChange={(e) => setAddMediaSearch(e.target.value)}
-              placeholder="Търси по име..."
-              style={{ marginBottom: "10px" }}
-            />
-            {loadingAddMedia && (
-              <p className="text-muted" style={{ marginBottom: "10px" }}>
-                Зареждане...
-              </p>
-            )}
-            <select
-              className="fd-select"
-              value={selectedFileId}
-              onChange={(e) => setSelectedFileId(e.target.value)}
-              disabled={loadingAddMedia}
+            <div
+              style={{
+                border: "1px solid var(--border-color)",
+                borderRadius: "8px",
+                overflow: "hidden",
+                marginBottom: "12px",
+              }}
             >
-              <option value="">Избери медия...</option>
-              {allFiles.map((f) => (
-                <option key={f.id} value={f.id}>{f.displayName}</option>
-              ))}
-            </select>
-            {!loadingAddMedia && allFiles.length > 0 && (
-              <p className="text-muted" style={{ marginTop: "10px", marginBottom: "0" }}>
-                Показани {allFiles.length} от {addMediaTotal} файла
-              </p>
-            )}
-            {addMediaHasMore && (
-              <div style={{ marginTop: "10px", display: "flex", justifyContent: "flex-start" }}>
-                <button
-                  className="fd-btn fd-btn-secondary fd-btn-sm"
-                  onClick={handleLoadMoreAddMedia}
-                  disabled={loadingMoreAddMedia || loadingAddMedia}
-                >
-                  {loadingMoreAddMedia ? "Зареждане..." : "Зареди още"}
-                </button>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  padding: "8px 12px",
+                  background: "var(--bg-secondary, rgba(255,255,255,0.04))",
+                  borderBottom: "1px solid var(--border-color)",
+                  flexWrap: "wrap",
+                  fontSize: "0.82rem",
+                }}
+              >
+                {browserBreadcrumb.map((entry, index) => (
+                  <span key={`${entry.id ?? "root"}-${index}`} style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                    {index > 0 && <span className="text-muted">/</span>}
+                    <button
+                      onClick={() => navigateToBrowserCrumb(entry, index)}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        padding: "0 2px",
+                        cursor: index < browserBreadcrumb.length - 1 ? "pointer" : "default",
+                        color: index < browserBreadcrumb.length - 1 ? "var(--accent-gold-color)" : "inherit",
+                        fontWeight: index === browserBreadcrumb.length - 1 ? 600 : 400,
+                        fontSize: "inherit",
+                      }}
+                    >
+                      {entry.name}
+                    </button>
+                  </span>
+                ))}
               </div>
-            )}
-            {!loadingAddMedia && allFiles.length === 0 && (
-              <p className="text-muted" style={{ marginTop: "10px", marginBottom: "0" }}>
-                Няма намерени READY файлове за текущата папка.
-              </p>
-            )}
+              <div style={{ maxHeight: "320px", overflowY: "auto" }}>
+                {browserLoading ? (
+                  <div className="flex justify-center" style={{ padding: "24px" }}>
+                    <div className="loading" />
+                  </div>
+                ) : (
+                  <>
+                    {browserChildren.map((child) => (
+                      <div
+                        key={child.id}
+                        onClick={() => enterBrowserFolder(child)}
+                        className="folder-card fd-browser-folder-card"
+                      >
+                        <div className="fd-browser-folder-content">
+                          <strong>{child.name}</strong>
+                          <span className="text-muted fd-browser-folder-meta">
+                            {child._count.items} файла
+                            {child._count.children > 0 ? ` · ${child._count.children} подпапки` : ""}
+                          </span>
+                        </div>
+                        <span className="text-muted fd-browser-folder-arrow">›</span>
+                      </div>
+                    ))}
+                    {addableReadyItems.map((entry) => (
+                      <label
+                        key={entry.id}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          padding: "10px 12px",
+                          cursor: "pointer",
+                          borderBottom: "1px solid var(--border-color)",
+                          background: selectedFileId === entry.mediaFile.id ? "rgba(212, 175, 55, 0.08)" : "transparent",
+                        }}
+                      >
+                        <input
+                          type="radio"
+                          checked={selectedFileId === entry.mediaFile.id}
+                          onChange={() => setSelectedFileId(entry.mediaFile.id)}
+                          style={{ width: "auto", marginRight: "12px" }}
+                        />
+                        <span style={{ fontSize: "0.9rem" }}>{entry.mediaFile.displayName}</span>
+                      </label>
+                    ))}
+                    {browserChildren.length === 0 && addableReadyItems.length === 0 && (
+                      <p className="text-muted" style={{ padding: "16px", textAlign: "center", fontSize: "0.85rem" }}>
+                        Няма READY файлове за добавяне в тази папка.
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
             <div className="fd-modal-actions">
               <button className="fd-btn fd-btn-ghost" onClick={() => setShowAddVideo(false)}>Отказ</button>
               <button className="fd-btn fd-btn-primary" onClick={handleAddVideo} disabled={!selectedFileId}>Добави</button>
