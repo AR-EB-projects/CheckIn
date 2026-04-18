@@ -75,6 +75,7 @@ export default function TrainingPage() {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saveSuccess, setSaveSuccess] = useState(false)
 
+  const [selectedGroup, setSelectedGroup] = useState<'AMATEURS' | 'ADVANCED'>('AMATEURS')
   const [selectedDates, setSelectedDates] = useState<string[]>([])
   const [timeMode, setTimeMode] = useState<TimeMode>('single')
   const [singleTime, setSingleTime] = useState('')
@@ -87,10 +88,17 @@ export default function TrainingPage() {
     if (!data.isAdmin) router.push('/admin/login')
   }
 
-  const fetchSchedule = async () => {
+  const fetchSchedule = async (group: 'AMATEURS' | 'ADVANCED') => {
     setScheduleLoading(true)
+    setSelectedDates([])
+    setTimeMode('single')
+    setSingleTime('')
+    setWeekdayTimes({})
+    setDateTimes({})
+    setSaveError(null)
+    setSaveSuccess(false)
     try {
-      const res = await fetch('/api/admin/training', { cache: 'no-store' })
+      const res = await fetch(`/api/admin/training?group=${group}`, { cache: 'no-store' })
       if (res.ok) {
         const data = await res.json() as { schedule: TrainingSchedule | null }
         if (data.schedule) {
@@ -116,16 +124,21 @@ export default function TrainingPage() {
     }
   }
 
+  const switchGroup = (group: 'AMATEURS' | 'ADVANCED') => {
+    setSelectedGroup(group)
+    void fetchSchedule(group)
+  }
+
   useEffect(() => {
     void checkSession()
-    void fetchSchedule()
+    void fetchSchedule(selectedGroup)
   }, [])
 
   useEffect(() => {
     const es = new EventSource('/api/admin/training/stream')
-    es.addEventListener('attendance-update', () => { void fetchSchedule() })
+    es.addEventListener('attendance-update', () => { void fetchSchedule(selectedGroup) })
     return () => es.close()
-  }, [])
+  }, [selectedGroup])
 
   const limitIso = (() => {
     const d = new Date(`${todayIso}T00:00:00.000Z`)
@@ -190,7 +203,7 @@ export default function TrainingPage() {
       const res = await fetch('/api/admin/training', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ trainingDates: selectedDates, timeMode, trainingTime, trainingDateTimes }),
+        body: JSON.stringify({ group: selectedGroup, trainingDates: selectedDates, timeMode, trainingTime, trainingDateTimes }),
       })
       if (res.ok) {
         router.push('/admin/members?training=1')
@@ -242,6 +255,26 @@ export default function TrainingPage() {
           <h2 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '16px', color: 'var(--text-primary)', textAlign: 'center' }}>
             Настройка на графика
           </h2>
+
+          {/* Group selector */}
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', justifyContent: 'center' }}>
+            {(['AMATEURS', 'ADVANCED'] as const).map((g) => (
+              <button
+                key={g}
+                type="button"
+                onClick={() => switchGroup(g)}
+                style={{
+                  padding: '8px 24px', borderRadius: '6px', fontSize: '14px', fontWeight: 700,
+                  cursor: 'pointer', transition: 'all 0.2s',
+                  background: selectedGroup === g ? 'var(--accent-gold-color)' : 'transparent',
+                  color: selectedGroup === g ? '#000' : 'var(--text-primary)',
+                  border: `1px solid ${selectedGroup === g ? 'var(--accent-gold-color)' : 'var(--border-color)'}`,
+                }}
+              >
+                {g === 'AMATEURS' ? 'Начинаещи' : 'Напреднали'}
+              </button>
+            ))}
+          </div>
 
           {scheduleLoading ? (
             <div style={{ textAlign: 'center', padding: '20px' }}><div className="loading" /></div>

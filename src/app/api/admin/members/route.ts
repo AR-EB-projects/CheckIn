@@ -14,13 +14,20 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-        const { firstName, secondName, visitsTotal } = await request.json();
+        const { firstName, secondName, visitsTotal, group } = await request.json();
         const safeFirstName = String(firstName ?? "").trim();
         const safeSecondName = String(secondName ?? "").trim();
 
         if (!safeFirstName) {
             return NextResponse.json(
                 { error: "First name is required" },
+                { status: 400 }
+            );
+        }
+
+        if (!group || (group !== "AMATEURS" && group !== "ADVANCED")) {
+            return NextResponse.json(
+                { error: "Group is required and must be AMATEURS or ADVANCED" },
                 { status: 400 }
             );
         }
@@ -37,6 +44,7 @@ export async function POST(request: NextRequest) {
                         secondName: safeSecondName,
                         visitsTotal: visitsTotal || 0,
                         visitsUsed: 0,
+                        group,
                         cards: {
                             create: {
                                 cardCode,

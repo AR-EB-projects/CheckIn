@@ -37,12 +37,14 @@ export function shouldNotifyForTrainingDatesChange(
 export async function sendTrainingScheduleNotifications(input: {
   previousDates: string[];
   trainingDates: string[];
+  group: "AMATEURS" | "ADVANCED";
 }): Promise<TrainingScheduleNotificationSummary> {
   if (input.trainingDates.length === 0) {
     return { targetedMembers: 0, total: 0, sent: 0, failed: 0, deactivated: 0, historySaved: 0 };
   }
 
   const members = await prisma.member.findMany({
+    where: { group: input.group },
     select: {
       id: true,
       cards: {

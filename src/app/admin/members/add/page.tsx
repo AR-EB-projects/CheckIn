@@ -8,6 +8,7 @@ export default function AddMemberPage() {
   const [firstName, setFirstName] = useState("");
   const [secondName, setSecondName] = useState("");
   const [visitsTotal, setVisitsTotal] = useState(8);
+  const [group, setGroup] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
@@ -20,7 +21,7 @@ export default function AddMemberPage() {
       const response = await fetch("/api/admin/members", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ firstName, secondName, visitsTotal }),
+        body: JSON.stringify({ firstName, secondName, visitsTotal, group }),
       });
 
       if (response.ok) {
@@ -115,6 +116,26 @@ export default function AddMemberPage() {
                 color: 'var(--text-primary)',
               }}
             />
+          </div>
+          <div className="text-left">
+            <label className="text-secondary mb-2 block" style={{ fontSize: '1rem', fontWeight: '500' }}>
+              Група
+            </label>
+            <select
+              required
+              value={group}
+              onChange={(e) => setGroup(e.target.value)}
+              className="w-full px-4 py-3 bg-secondary border border-color rounded-lg text-primary focus:outline-none focus:border-accent-gold transition-colors"
+              style={{
+                backgroundColor: 'var(--bg-secondary)',
+                border: '1px solid var(--border-color)',
+                color: group ? 'var(--text-primary)' : 'var(--text-muted)',
+              }}
+            >
+              <option value="" disabled>Изберете група</option>
+              <option value="AMATEURS">Начинаещи</option>
+              <option value="ADVANCED">Напреднали</option>
+            </select>
           </div>
 
           {error && (
