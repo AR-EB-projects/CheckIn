@@ -29,6 +29,7 @@ export default function MediaLibraryPage() {
   const [newFolderName, setNewFolderName] = useState("");
   const [deletingFolder, setDeletingFolder] = useState<Folder | null>(null);
   const [isAdminRole, setIsAdminRole] = useState(false);
+  const [isMediaManager, setIsMediaManager] = useState(false);
   const [selectedFolderIds, setSelectedFolderIds] = useState<Set<string>>(new Set());
   const [downloadingSelection, setDownloadingSelection] = useState(false);
   const [memberReturnCardCode] = useState<string | null>(() =>
@@ -88,6 +89,7 @@ export default function MediaLibraryPage() {
         const data = await res.json();
         if (!cancelled) {
           setIsAdminRole(data.role === "ADMIN");
+          setIsMediaManager(data.role === "MEDIA_MANAGER");
         }
       } catch {
         // Ignore
@@ -244,7 +246,7 @@ export default function MediaLibraryPage() {
         {(isAdminRole || memberReturnCardCode) && (<button onClick={handleBack} className="btn btn-secondary">
           Назад
         </button>)}
-        {isAdminRole && (
+        {(isAdminRole || isMediaManager) && (
           <button onClick={async () => { await fetch("/api/admin/logout", { method: "POST" }); router.push("/admin/login"); }} className="btn btn-secondary">
             Изход
           </button>
