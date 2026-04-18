@@ -244,6 +244,11 @@ export default function MediaLibraryPage() {
         {(isAdminRole || memberReturnCardCode) && (<button onClick={handleBack} className="btn btn-secondary">
           Назад
         </button>)}
+        {isAdminRole && (
+          <button onClick={async () => { await fetch("/api/admin/logout", { method: "POST" }); router.push("/admin/login"); }} className="btn btn-secondary">
+            Изход
+          </button>
+        )}
       </div>
 
       <div className="mb-8 ml-folders-section">
