@@ -91,6 +91,7 @@ async function getMemberTrainingContext(cardCode: string) {
           id: true,
           firstName: true,
           secondName: true,
+          group: true,
         },
       },
     },
@@ -100,8 +101,21 @@ async function getMemberTrainingContext(cardCode: string) {
     return null;
   }
 
+  const memberGroup = card.member.group;
+  if (!memberGroup) {
+    return {
+      cardCode: card.cardCode,
+      memberId: card.memberId,
+      memberName: `${card.member.firstName} ${card.member.secondName}`,
+      trainingWeekdays: [] as number[],
+      trainingWindowDays: TRAINING_SELECTION_WINDOW_DAYS,
+      upcomingDates: [] as string[],
+      schedule: null,
+    };
+  }
+
   const schedule = await prisma.trainingSchedule.findFirst({
-    where: { isActive: true },
+    where: { isActive: true, group: memberGroup },
     select: {
       trainingWeekdays: true,
       trainingTime: true,

@@ -51,6 +51,7 @@ export async function PUT(
     const secondName = String(body.secondName ?? "").trim();
     const visitsTotal = Number(body.visitsTotal);
     const visitsUsed = Number(body.visitsUsed);
+    const group = body.group ?? null;
 
     if (!firstName) {
       return NextResponse.json(
@@ -80,6 +81,13 @@ export async function PUT(
       );
     }
 
+    if (group !== null && group !== "AMATEURS" && group !== "ADVANCED") {
+      return NextResponse.json(
+        { error: "group must be AMATEURS, ADVANCED, or null" },
+        { status: 400 }
+      );
+    }
+
     const updatedMember = await prisma.member.update({
       where: { id },
       data: {
@@ -87,6 +95,7 @@ export async function PUT(
         secondName,
         visitsTotal,
         visitsUsed,
+        group,
       },
       include: { cards: { orderBy: { createdAt: "desc" } } },
     });

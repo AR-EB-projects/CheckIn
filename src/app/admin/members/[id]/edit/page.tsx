@@ -15,6 +15,7 @@ interface MemberResponse {
   secondName: string;
   visitsTotal: number;
   visitsUsed: number;
+  group: "AMATEURS" | "ADVANCED" | null;
   cards: Card[];
 }
 
@@ -33,6 +34,7 @@ export default function EditMemberPage() {
   const [secondName, setSecondName] = useState("");
   const [visitsTotal, setVisitsTotal] = useState("0");
   const [visitsUsed, setVisitsUsed] = useState("0");
+  const [group, setGroup] = useState<string>("");
   const [cards, setCards] = useState<Card[]>([]);
 
   useEffect(() => {
@@ -49,6 +51,7 @@ export default function EditMemberPage() {
         setSecondName(member.secondName);
         setVisitsTotal(String(member.visitsTotal));
         setVisitsUsed(String(member.visitsUsed));
+        setGroup(member.group ?? "");
         setCards(member.cards ?? []);
       } catch (err) {
         console.error("Error fetching member:", err);
@@ -107,6 +110,7 @@ export default function EditMemberPage() {
           secondName: secondName.trim(),
           visitsTotal: parsedVisitsTotal,
           visitsUsed: parsedVisitsUsed,
+          group: group || null,
         }),
       });
 
@@ -224,6 +228,20 @@ export default function EditMemberPage() {
                 disabled={saving}
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block mb-2 text-secondary">Група</label>
+            <select
+              className="input w-full"
+              value={group}
+              onChange={(e) => setGroup(e.target.value)}
+              disabled={saving}
+            >
+              <option value="">Не е зададена</option>
+              <option value="AMATEURS">Начинаещи</option>
+              <option value="ADVANCED">Напреднали</option>
+            </select>
           </div>
 
           <div>

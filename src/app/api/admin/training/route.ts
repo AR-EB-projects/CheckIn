@@ -22,14 +22,22 @@ function getTodayIso() {
   return new Date().toLocaleDateString("en-CA", { timeZone: FIXED_TIME_ZONE });
 }
 
+type MemberGroup = "AMATEURS" | "ADVANCED";
+
+function parseGroupParam(raw: string | null): MemberGroup {
+  return raw === "AMATEURS" ? "AMATEURS" : "ADVANCED";
+}
+
 export async function GET(request: NextRequest) {
   const session = await verifySession(request);
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const group = parseGroupParam(request.nextUrl.searchParams.get("group"));
+
   const schedule = await prisma.trainingSchedule.findFirst({
-    where: { isActive: true },
+    where: { isActive: true, group },
     orderBy: { createdAt: "desc" },
   });
 
@@ -39,7 +47,7 @@ export async function GET(request: NextRequest) {
     .sort();
 
   const [totalMembers, optOutRows] = await Promise.all([
-    prisma.member.count(),
+    prisma.member.count({ where: { group } }),
     upcomingDateStrings.length > 0
       ? prisma.trainingOptOut.groupBy({
           by: ["trainingDate"],
@@ -94,6 +102,12 @@ export async function PUT(request: NextRequest) {
 
   const body = await request.json().catch(() => ({})) as Record<string, unknown>;
 
+  const rawGroup = String(body.group ?? "");
+  if (rawGroup !== "AMATEURS" && rawGroup !== "ADVANCED") {
+    return NextResponse.json({ error: "group must be AMATEURS or ADVANCED" }, { status: 400 });
+  }
+  const group: MemberGroup = rawGroup;
+
   const rawDates = body.trainingDates;
   if (!Array.isArray(rawDates)) {
     return NextResponse.json({ error: "trainingDates must be an array" }, { status: 400 });
@@ -140,7 +154,7 @@ export async function PUT(request: NextRequest) {
   ].sort((a, b) => a - b);
 
   const existing = await prisma.trainingSchedule.findFirst({
-    where: { isActive: true },
+    where: { isActive: true, group },
     orderBy: { createdAt: "desc" },
   });
 
@@ -165,6 +179,7 @@ export async function PUT(request: NextRequest) {
           trainingTime,
           trainingDateTimes: jsonValue,
           isActive: true,
+          group,
         },
       });
 
@@ -184,6 +199,7 @@ export async function PUT(request: NextRequest) {
     void sendTrainingScheduleNotifications({
       previousDates,
       trainingDates,
+      group,
     }).catch((err) => console.error("Training schedule push error:", err));
   }
 

@@ -64,6 +64,7 @@ interface Member {
   secondName: string;
   visitsTotal: number;
   visitsUsed: number;
+  group: "AMATEURS" | "ADVANCED" | null;
   cards: Card[];
 }
 
@@ -131,6 +132,7 @@ export default function AdminMembersPage() {
   const [view, setView] = useState<'members' | 'questions'>('members');
   const [questions, setQuestions] = useState<Question[]>([]);
   const [showTrainingModal, setShowTrainingModal] = useState(false);
+  const [trainingModalGroup, setTrainingModalGroup] = useState<'AMATEURS' | 'ADVANCED'>('AMATEURS');
   const [trainingSchedule, setTrainingSchedule] = useState<TrainingSchedule | null>(null);
   const [upcomingTrainingDates, setUpcomingTrainingDates] = useState<UpcomingTrainingDate[]>([]);
   const [trainingLoading, setTrainingLoading] = useState(false);
@@ -159,10 +161,10 @@ export default function AdminMembersPage() {
     }
   };
 
-  const fetchTrainingData = async (showLoader = true) => {
+  const fetchTrainingData = async (group: 'AMATEURS' | 'ADVANCED', showLoader = true) => {
     if (showLoader) setTrainingLoading(true);
     try {
-      const res = await fetch('/api/admin/training', { cache: 'no-store' });
+      const res = await fetch(`/api/admin/training?group=${group}`, { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json() as { schedule: TrainingSchedule | null; upcomingDates: UpcomingTrainingDate[] };
         setTrainingSchedule(data.schedule);
@@ -175,9 +177,14 @@ export default function AdminMembersPage() {
     }
   };
 
+  const switchTrainingModalGroup = (group: 'AMATEURS' | 'ADVANCED') => {
+    setTrainingModalGroup(group);
+    void fetchTrainingData(group, true);
+  };
+
   const openTrainingModal = async () => {
     setShowTrainingModal(true);
-    await fetchTrainingData(true);
+    await fetchTrainingData(trainingModalGroup, true);
   };
 
   const refreshDayDetailSilent = async (date: string) => {
@@ -210,12 +217,12 @@ export default function AdminMembersPage() {
 
     const es = new EventSource('/api/admin/training/stream');
     es.addEventListener('attendance-update', () => {
-      void fetchTrainingData(false);
+      void fetchTrainingData(trainingModalGroup, false);
       const openDate = trainingDayDetailRef.current?.date;
       if (openDate) void refreshDayDetailSilent(openDate);
     });
     return () => es.close();
-  }, [showTrainingModal]);
+  }, [showTrainingModal, trainingModalGroup]);
 
   const fetchQuestions = async (showLoader = true) => {
     if (showLoader) {
@@ -550,6 +557,21 @@ export default function AdminMembersPage() {
                     {member.firstName} {member.secondName}
                   </h3>
                   <p className="text-muted" style={{ fontSize: '0.9rem' }}>ID: {member.id}</p>
+                  {member.group && (
+                    <span style={{
+                      display: 'inline-block',
+                      marginTop: '4px',
+                      padding: '2px 10px',
+                      borderRadius: '999px',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      color: member.group === 'ADVANCED' ? '#bbf7d0' : '#bfdbfe',
+                      background: member.group === 'ADVANCED' ? 'rgba(22, 101, 52, 0.45)' : 'rgba(30, 64, 175, 0.45)',
+                      border: `1px solid ${member.group === 'ADVANCED' ? 'rgba(34, 197, 94, 0.55)' : 'rgba(59, 130, 246, 0.55)'}`,
+                    }}>
+                      {member.group === 'ADVANCED' ? 'Напреднали' : 'Начинаещи'}
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -812,6 +834,26 @@ export default function AdminMembersPage() {
         <div className="modal-overlay" onClick={() => setShowTrainingModal(false)}>
           <div className="modal-content fade-in" style={{ maxWidth: '520px', width: '100%', maxHeight: '80vh', overflow: 'auto' }} onClick={(e) => e.stopPropagation()}>
             <h3 className="text-gold mb-4">Тренировки</h3>
+
+            {/* Group tabs */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', justifyContent: 'center' }}>
+              {(['AMATEURS', 'ADVANCED'] as const).map((g) => (
+                <button
+                  key={g}
+                  type="button"
+                  onClick={() => switchTrainingModalGroup(g)}
+                  style={{
+                    padding: '6px 18px', borderRadius: '6px', fontSize: '13px', fontWeight: 700,
+                    cursor: 'pointer', transition: 'all 0.2s',
+                    background: trainingModalGroup === g ? 'var(--accent-gold-color)' : 'transparent',
+                    color: trainingModalGroup === g ? '#000' : 'var(--text-primary)',
+                    border: `1px solid ${trainingModalGroup === g ? 'var(--accent-gold-color)' : 'var(--border-color)'}`,
+                  }}
+                >
+                  {g === 'AMATEURS' ? 'Начинаещи' : 'Напреднали'}
+                </button>
+              ))}
+            </div>
 
             {trainingLoading ? (
               <div className="flex flex-col items-center justify-center" style={{ minHeight: '120px' }}>

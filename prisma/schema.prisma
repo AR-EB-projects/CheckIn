@@ -7,12 +7,18 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum MemberGroup {
+  AMATEURS
+  ADVANCED
+}
+
 model Member {
   id                String                 @id @default(uuid())
   firstName         String
   secondName        String
   visitsTotal       Int                    @default(0)
   visitsUsed        Int                    @default(0)
+  group             MemberGroup?
   cards             Card[]
   answers           MemberQuestionAnswer[]
   pushSubscriptions PushSubscription[]
@@ -215,16 +221,17 @@ model AdminPushSubscription {
 }
 
 model TrainingSchedule {
-  id                 String   @id @default(uuid())
+  id                 String      @id @default(uuid())
   trainingWeekdays   Int[]
   trainingTime       String?
-  trainingWindowDays Int      @default(30)
-  isActive           Boolean  @default(true)
-  timeMode           String   @default("single")
+  trainingWindowDays Int         @default(30)
+  isActive           Boolean     @default(true)
+  timeMode           String      @default("single")
   trainingDates      String[]
   trainingDateTimes  Json?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  group              MemberGroup @default(ADVANCED)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
 
   @@map("training_schedules")
 }
