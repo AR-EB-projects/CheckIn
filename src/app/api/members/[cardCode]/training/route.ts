@@ -16,14 +16,8 @@ export const dynamic = "force-dynamic";
 
 const FIXED_TIME_ZONE = "Europe/Sofia";
 const TRAINING_SELECTION_WINDOW_DAYS = 30;
-
-const OPT_OUT_REASON_LABELS_BG = {
-  injury: "Контузия",
-  sick: "Болен",
-  other: "Друго",
-} as const;
-
-type OptOutReasonCode = keyof typeof OPT_OUT_REASON_LABELS_BG;
+type MemberOptInRow = { trainingDate: Date };
+type MemberNoteRow = { trainingDate: Date; note: string | null };
 
 function formatBgDate(isoDate: string) {
   return new Date(`${isoDate}T00:00:00.000Z`).toLocaleDateString("bg-BG", {
@@ -37,29 +31,6 @@ function safeNormalizeTrainingTime(raw: unknown): string | null {
   } catch {
     return null;
   }
-}
-
-function parseOptOutReason(
-  rawCode: unknown,
-  rawText: unknown,
-): { code: OptOutReasonCode; text: string | null } | { error: string } {
-  const code = String(rawCode ?? "").trim().toLowerCase();
-  if (code !== "injury" && code !== "sick" && code !== "other") {
-    return { error: "Invalid opt-out reason." };
-  }
-
-  const text = String(rawText ?? "").trim();
-  if (code === "other") {
-    if (text.length === 0) {
-      return { error: "Reason text is required when reason is 'other'." };
-    }
-    if (text.length > 200) {
-      return { error: "Reason text must be at most 200 characters." };
-    }
-    return { code, text };
-  }
-
-  return { code, text: null };
 }
 
 function resolveTimeForDate(
@@ -188,13 +159,13 @@ export async function GET(
   }
 
   const trainingDatesAsUtc = context.upcomingDates.map((d) => isoDateToUtcMidnight(d));
-  const [optOutRows, noteRows] = await Promise.all([
-    prisma.trainingOptOut.findMany({
+  const [optInRows, noteRows]: [MemberOptInRow[], MemberNoteRow[]] = await Promise.all([
+    prisma.trainingOptIn.findMany({
       where: {
         memberId: context.memberId,
         trainingDate: { in: trainingDatesAsUtc },
       },
-      select: { trainingDate: true, reasonCode: true, reasonText: true },
+      select: { trainingDate: true },
     }),
     prisma.trainingNote.findMany({
       where: { trainingDate: { in: trainingDatesAsUtc } },
@@ -202,12 +173,7 @@ export async function GET(
     }),
   ]);
 
-  const optedOutByDate = new Map(
-    optOutRows.map((item) => [
-      utcDateToIsoDate(item.trainingDate),
-      { reasonCode: item.reasonCode, reasonText: item.reasonText },
-    ] as const),
-  );
+  const optInDates = new Set(optInRows.map((item) => utcDateToIsoDate(item.trainingDate)));
   const noteByDate = new Map(
     noteRows
       .map((item) => [utcDateToIsoDate(item.trainingDate), item.note?.trim() ?? ""] as const)
@@ -221,9 +187,9 @@ export async function GET(
     dates: context.upcomingDates.map((date) => ({
       date,
       weekday: getWeekdayMondayFirst(date, FIXED_TIME_ZONE),
-      optedOut: optedOutByDate.has(date),
-      optOutReasonCode: optedOutByDate.get(date)?.reasonCode ?? null,
-      optOutReasonText: optedOutByDate.get(date)?.reasonText ?? null,
+      optedOut: !optInDates.has(date),
+      optOutReasonCode: null,
+      optOutReasonText: null,
       trainingTime: context.schedule
         ? resolveTimeForDate(
             date,
@@ -250,10 +216,6 @@ export async function POST(
 
   const body = await request.json().catch(() => ({}));
   const trainingDate = String((body as { trainingDate?: unknown }).trainingDate ?? "").trim();
-  const parsedReason = parseOptOutReason(
-    (body as { reasonCode?: unknown }).reasonCode,
-    (body as { reasonText?: unknown }).reasonText,
-  );
 
   if (!isIsoDate(trainingDate)) {
     return NextResponse.json({ error: "Invalid trainingDate" }, { status: 400 });
@@ -261,44 +223,33 @@ export async function POST(
   if (!context.upcomingDates.includes(trainingDate)) {
     return NextResponse.json({ error: "Date is outside configured training window" }, { status: 400 });
   }
-  if ("error" in parsedReason) {
-    return NextResponse.json({ error: parsedReason.error }, { status: 400 });
-  }
 
-  await prisma.trainingOptOut.upsert({
+  await prisma.trainingOptIn.upsert({
     where: {
       memberId_trainingDate: {
         memberId: context.memberId,
         trainingDate: isoDateToUtcMidnight(trainingDate),
       },
     },
-    update: { reasonCode: parsedReason.code, reasonText: parsedReason.text },
+    update: {},
     create: {
       memberId: context.memberId,
       trainingDate: isoDateToUtcMidnight(trainingDate),
-      reasonCode: parsedReason.code,
-      reasonText: parsedReason.text,
     },
   });
 
   publishTrainingAttendanceUpdated(trainingDate);
 
   void sendPushToAdmins({
-    title: "Отсъствие от тренировка",
-    body: `${context.memberName} ще отсъства на ${formatBgDate(trainingDate)}.`,
+    title: "Потвърдено присъствие",
+    body: `${context.memberName} ще присъства на тренировката на ${formatBgDate(trainingDate)}.`,
     url: `/admin/members?training=1&date=${trainingDate}`,
     icon: "/logo.png",
     badge: "/logo.png",
-    tag: `training-opt-out-${context.memberId}-${trainingDate}`,
-  }).catch((err) => console.error("Admin push (opt-out) error:", err));
+    tag: `training-opt-in-${context.memberId}-${trainingDate}`,
+  }).catch((err) => console.error("Admin push (opt-in) error:", err));
 
-  return NextResponse.json({
-    success: true,
-    trainingDate,
-    optedOut: true,
-    reasonCode: parsedReason.code,
-    reasonText: parsedReason.text,
-  });
+  return NextResponse.json({ success: true, trainingDate, optedOut: false });
 }
 
 export async function DELETE(
@@ -319,7 +270,7 @@ export async function DELETE(
     return NextResponse.json({ error: "Invalid trainingDate" }, { status: 400 });
   }
 
-  await prisma.trainingOptOut.deleteMany({
+  await prisma.trainingOptIn.deleteMany({
     where: {
       memberId: context.memberId,
       trainingDate: isoDateToUtcMidnight(trainingDate),
@@ -329,13 +280,13 @@ export async function DELETE(
   publishTrainingAttendanceUpdated(trainingDate);
 
   void sendPushToAdmins({
-    title: "Потвърдено присъствие",
-    body: `${context.memberName} ще присъства на тренировката на ${formatBgDate(trainingDate)}.`,
+    title: "Отсъствие от тренировка",
+    body: `${context.memberName} ще отсъства на ${formatBgDate(trainingDate)}.`,
     url: `/admin/members?training=1&date=${trainingDate}`,
     icon: "/logo.png",
     badge: "/logo.png",
-    tag: `training-opt-in-${context.memberId}-${trainingDate}`,
-  }).catch((err) => console.error("Admin push (opt-in) error:", err));
+    tag: `training-opt-out-${context.memberId}-${trainingDate}`,
+  }).catch((err) => console.error("Admin push (opt-out) error:", err));
 
-  return NextResponse.json({ success: true, trainingDate, optedOut: false });
+  return NextResponse.json({ success: true, trainingDate, optedOut: true });
 }

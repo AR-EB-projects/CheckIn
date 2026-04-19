@@ -450,26 +450,26 @@ export default function MemberPage({ params }: { params: Promise<{ cardCode: str
     }
   }
 
-  const handleTrainingOptOut = async (date: string) => {
+  const handleTrainingOptIn = async (date: string) => {
     setTrainingOptOutPending((prev) => ({ ...prev, [date]: true }))
     try {
       const res = await fetch(`/api/members/${resolvedParams.cardCode}/training`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ trainingDate: date, reasonCode: 'sick' }),
+        body: JSON.stringify({ trainingDate: date }),
       })
       if (res.ok) {
         await fetchTraining(resolvedParams.cardCode)
         setTrainingDetailsDate(null)
       }
     } catch (err) {
-      console.error('Training opt-out error:', err)
+      console.error('Training opt-in error:', err)
     } finally {
       setTrainingOptOutPending((prev) => ({ ...prev, [date]: false }))
     }
   }
 
-  const handleTrainingOptIn = async (date: string) => {
+  const handleTrainingOptOut = async (date: string) => {
     setTrainingOptOutPending((prev) => ({ ...prev, [date]: true }))
     try {
       const res = await fetch(`/api/members/${resolvedParams.cardCode}/training`, {
@@ -482,7 +482,7 @@ export default function MemberPage({ params }: { params: Promise<{ cardCode: str
         setTrainingDetailsDate(null)
       }
     } catch (err) {
-      console.error('Training opt-in error:', err)
+      console.error('Training opt-out error:', err)
     } finally {
       setTrainingOptOutPending((prev) => ({ ...prev, [date]: false }))
     }
