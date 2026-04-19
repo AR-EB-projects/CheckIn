@@ -19,6 +19,8 @@ export const dynamic = "force-dynamic";
 
 const FIXED_TIME_ZONE = "Europe/Sofia";
 const TRAINING_SELECTION_WINDOW_DAYS = 30;
+type TrainingOptInRow = { memberId: string; trainingDate: Date };
+type TrainingNoteRow = { note: string } | null;
 
 function safeNormalizeTrainingTime(raw: unknown): string | null {
   try {
@@ -130,29 +132,29 @@ export async function GET(request: NextRequest) {
   const trainingDateAsDate = isoDateToUtcMidnight(trainingDate);
   const upcomingDatesAsDate = upcomingDates.map((d) => isoDateToUtcMidnight(d));
 
-  const [allOptOuts, note] = await Promise.all([
+  const [allOptIns, note]: [TrainingOptInRow[], TrainingNoteRow] = await Promise.all([
     memberIds.length > 0
-      ? prisma.trainingOptOut.findMany({
+      ? prisma.trainingOptIn.findMany({
           where: {
             memberId: { in: memberIds },
             trainingDate: { in: upcomingDatesAsDate },
           },
           select: { memberId: true, trainingDate: true },
         })
-      : Promise.resolve([]),
+      : Promise.resolve<TrainingOptInRow[]>([]),
     prisma.trainingNote.findUnique({
       where: { trainingDate: trainingDateAsDate },
       select: { note: true },
     }),
   ]);
 
-  const optedOutCountByDate = new Map<string, number>();
-  const selectedDateOptedOutSet = new Set<string>();
-  for (const item of allOptOuts) {
+  const optInCountByDate = new Map<string, number>();
+  const selectedDateOptInSet = new Set<string>();
+  for (const item of allOptIns) {
     const dateIso = utcDateToIsoDate(item.trainingDate);
-    optedOutCountByDate.set(dateIso, (optedOutCountByDate.get(dateIso) ?? 0) + 1);
+    optInCountByDate.set(dateIso, (optInCountByDate.get(dateIso) ?? 0) + 1);
     if (dateIso === trainingDate) {
-      selectedDateOptedOutSet.add(item.memberId);
+      selectedDateOptInSet.add(item.memberId);
     }
   }
 
@@ -160,7 +162,7 @@ export async function GET(request: NextRequest) {
     id: m.id,
     fullName: `${m.firstName} ${m.secondName}`,
     cardCode: m.cards[0]?.cardCode ?? null,
-    optedOut: selectedDateOptedOutSet.has(m.id),
+    optedOut: !selectedDateOptInSet.has(m.id),
   }));
 
   const activeSchedule = schedule!;
@@ -195,8 +197,8 @@ export async function GET(request: NextRequest) {
       trainingTime: resolveTime(date),
       stats: {
         total: membersWithStatus.length,
-        optedOut: optedOutCountByDate.get(date) ?? 0,
-        attending: Math.max(0, membersWithStatus.length - (optedOutCountByDate.get(date) ?? 0)),
+        optedOut: membersWithStatus.length - (optInCountByDate.get(date) ?? 0),
+        attending: optInCountByDate.get(date) ?? 0,
       },
     })),
   });
@@ -314,19 +316,17 @@ export async function PATCH(request: NextRequest) {
 
   const trainingDateAsDate = isoDateToUtcMidnight(trainingDate);
 
-  if (optedOut) {
-    await prisma.trainingOptOut.upsert({
+  if (!optedOut) {
+    await prisma.trainingOptIn.upsert({
       where: { memberId_trainingDate: { memberId: member.id, trainingDate: trainingDateAsDate } },
-      update: { reasonCode: "other", reasonText: "Промяна направена от администратор" },
+      update: {},
       create: {
         memberId: member.id,
         trainingDate: trainingDateAsDate,
-        reasonCode: "other",
-        reasonText: "Промяна направена от администратор",
       },
     });
   } else {
-    await prisma.trainingOptOut.deleteMany({
+    await prisma.trainingOptIn.deleteMany({
       where: { memberId: member.id, trainingDate: trainingDateAsDate },
     });
   }

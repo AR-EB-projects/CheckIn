@@ -23,6 +23,7 @@ function getTodayIso() {
 }
 
 type MemberGroup = "AMATEURS" | "ADVANCED";
+type OptInCountRow = { trainingDate: Date; _count: { id: number } };
 
 function parseGroupParam(raw: string | null): MemberGroup {
   return raw === "AMATEURS" ? "AMATEURS" : "ADVANCED";
@@ -46,30 +47,30 @@ export async function GET(request: NextRequest) {
     .filter((d) => d >= todayIso)
     .sort();
 
-  const [totalMembers, optOutRows] = await Promise.all([
+  const [totalMembers, optInRows]: [number, OptInCountRow[]] = await Promise.all([
     prisma.member.count({ where: { group } }),
     upcomingDateStrings.length > 0
-      ? prisma.trainingOptOut.groupBy({
+      ? prisma.trainingOptIn.groupBy({
           by: ["trainingDate"],
           where: { trainingDate: { in: upcomingDateStrings.map(isoDateToUtcMidnight) } },
           _count: { id: true },
         })
-      : Promise.resolve([]),
+      : Promise.resolve<OptInCountRow[]>([]),
   ]);
 
-  const optOutCountByDate = new Map(
-    optOutRows.map((row) => [
+  const optInCountByDate = new Map(
+    optInRows.map((row) => [
       row.trainingDate.toISOString().slice(0, 10),
       row._count.id,
     ])
   );
 
   const upcomingDates = upcomingDateStrings.map((date) => {
-    const optOutCount = optOutCountByDate.get(date) ?? 0;
+    const optInCount = optInCountByDate.get(date) ?? 0;
     return {
       date,
       weekday: getWeekdayMondayFirst(date, FIXED_TIME_ZONE),
-      attendingCount: totalMembers - optOutCount,
+      attendingCount: optInCount,
       totalMembers,
     };
   });

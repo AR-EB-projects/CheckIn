@@ -23,7 +23,7 @@ model Member {
   answers           MemberQuestionAnswer[]
   pushSubscriptions PushSubscription[]
   notifications     MemberNotification[]
-  trainingOptOuts   TrainingOptOut[]
+  trainingOptIns    TrainingOptIn[]
 
   @@map("members")
 }
@@ -236,18 +236,16 @@ model TrainingSchedule {
   @@map("training_schedules")
 }
 
-model TrainingOptOut {
+model TrainingOptIn {
   id           String   @id @default(uuid())
   memberId     String
   trainingDate DateTime @db.Date
-  reasonCode   String?
-  reasonText   String?
   createdAt    DateTime @default(now())
   member       Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
 
   @@unique([memberId, trainingDate])
   @@index([trainingDate])
-  @@map("training_opt_outs")
+  @@map("training_opt_ins")
 }
 
 model TrainingNote {
